@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact — Khwahish</title>
+  <meta name="description" content="Get in touch with Khwahish — developer & designer based in Jaipur, India. Let's build something great together.">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <!-- Google Fonts: Rajdhani (HUD) + Inter (form) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- ══════════════════════════════════════════════════════
+         LEFT  ·  Form Panel  (hidden → left half after dock)
+    ══════════════════════════════════════════════════════════ -->
+    <div id="form-panel" aria-hidden="true">
+      <div id="form-inner">
+
+        <header id="form-header">
+          <p class="form-eyebrow">Open for work</p>
+          <h1>Let's build<br>something<br><em>great.</em></h1>
+        </header>
+
+        <form id="contact-form" novalidate>
+
+          <div class="field-group">
+            <label for="f-name">Name</label>
+            <input id="f-name" type="text" name="name"
+                   autocomplete="name" placeholder="Your name">
+          </div>
+
+          <div class="field-group">
+            <label for="f-email">Email</label>
+            <input id="f-email" type="email" name="email"
+                   autocomplete="email" placeholder="your@email.com">
+          </div>
+
+          <div class="field-group">
+            <label for="f-project">Your project is about</label>
+            <input id="f-project" type="text" name="project"
+                   placeholder="A quick description">
+          </div>
+
+          <div class="budget-row">
+            <div class="budget-left">
+              <span class="budget-label">Project Budget (USD)</span>
+              <div class="budget-pills" role="group" aria-label="Select project budget">
+                <button type="button" class="pill" data-value="<5k">&lt;$5K</button>
+                <button type="button" class="pill" data-value="5k-15k">$5K–$15K</button>
+                <button type="button" class="pill" data-value="15k-50k">$15K–$50K</button>
+                <button type="button" class="pill" data-value="50k+">$50K+</button>
+              </div>
+            </div>
+
+            <button type="submit" id="send-btn">
+              <span>Send</span>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none"
+                   aria-hidden="true" focusable="false">
+                <path d="M3 8h10M9 4l4 4-4 4"
+                      stroke="currentColor" stroke-width="1.5"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+
+        </form>
+
+        <div id="form-success" aria-live="polite" hidden>
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M6.5 10l2.5 2.5 4.5-5"
+                  stroke="currentColor" stroke-width="1.5"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p>Message sent. I'll be in touch soon.</p>
+        </div>
+
+      </div>
+    </div><!-- /form-panel -->
+
+    <!-- ══════════════════════════════════════════════════════
+         RIGHT  ·  Cinematic Panel  (full-viewport → right half)
+    ══════════════════════════════════════════════════════════ -->
+    <div id="cinematic" role="img" aria-label="Cinematic map transition from your location to Jaipur">
+
+      <!-- Leaflet map — filter applied directly here per feedback -->
+      <div id="map" aria-hidden="true"></div>
+
+      <!-- ── Visual overlays (pointer-events: none) ── -->
+      <div id="vignette"   aria-hidden="true"></div>
+      <div id="grain"      aria-hidden="true"></div>
+      <div id="color-wash" aria-hidden="true"></div>
+
+      <!-- Subtle CRT scanline texture -->
+      <div id="scanlines"  aria-hidden="true"></div>
+
+      <!-- Crosshair reticle (active during flight phases) -->
+      <div id="crosshair" aria-hidden="true">
+        <div class="cr-tl"></div>
+        <div class="cr-tr"></div>
+        <div class="cr-bl"></div>
+        <div class="cr-br"></div>
+      </div>
+
+      <!-- Top-edge progress bar -->
+      <div id="scanline-bar" aria-hidden="true"
+           role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div id="scanline-fill"></div>
+      </div>
+
+      <!-- HUD: location readout (bottom-left) -->
+      <div id="location-hud" aria-hidden="true">
+        <div id="hud-region">—</div>
+        <div id="hud-status">ACQUIRING SIGNAL</div>
+      </div>
+
+      <!-- Landing pin card (bottom-left, above HUD) -->
+      <div id="pin-card" class="pin-hidden" aria-hidden="true">
+        <div class="pin-dot"></div>
+        <div class="pin-info">
+          <div class="pin-name">Khwahish</div>
+          <div class="pin-role">Developer &amp; Designer</div>
+          <div class="pin-location">Jaipur, Rajasthan</div>
+        </div>
+      </div>
+
+      <!-- ── UI Controls ── -->
+      <button id="skip-btn" type="button">Skip intro</button>
+
+      <button id="sound-toggle" type="button"
+              aria-label="Enable sound" aria-pressed="false">
+        <!-- Muted (default) -->
+        <svg id="icon-muted" width="15" height="15" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <line x1="23" y1="9" x2="17" y2="15"/>
+          <line x1="17" y1="9" x2="23" y2="15"/>
+        </svg>
+        <!-- Sound on -->
+        <svg id="icon-sound" width="15" height="15" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round"
+             aria-hidden="true" style="display:none">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+      </button>
+
+    </div><!-- /cinematic -->
+
+  </div><!-- /app -->
+
+  <!-- Audio — muted by default, opt-in via toggle -->
+  <audio id="whoosh-audio" preload="none" aria-hidden="true">
+    <source src="assets/whoosh.mp3" type="audio/mpeg">
+    <!-- Drop a short whoosh/synth-stab MP3 into assets/ to activate -->
+  </audio>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="script.js"></script>
+
+</body>
+</html>
