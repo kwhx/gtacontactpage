@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "GTA V Character Switch - 7-View Sequence Timeline",
+  "version": "1.0",
+  "description": "Configuration managing sequence timeline, camera zoom/altitude distance, hold durations, highlights, and transitions.",
+  "settleMs": 600,
+  "dockTransitionMs": 2200,
+  "locations": {
+    "jaipur": [
+      75.7873,
+      26.9124
+    ],
+    "rajasthan": [
+      73.85,
+      26.6
+    ],
+    "india": [
+      78.9629,
+      22.5937
+    ],
+    "fallback_visitor": [
+      -118.2437,
+      34.0522
+    ]
+  },
+  "views": [
+    {
+      "id": "view_1_street",
+      "index": 1,
+      "name": "Street (visitor)",
+      "target": "visitor",
+      "zoom": 15,
+      "approxAltitudeKm": 1.2,
+      "holdMs": 3000,
+      "colorGrade": "GROUND",
+      "shutterSound": false,
+      "cameraPop": false,
+      "breathing": true,
+      "crosshair": false,
+      "highlight": {
+        "enabled": false
+      },
+      "transitionMs": 0
+    },
+    {
+      "id": "view_2_area",
+      "index": 2,
+      "name": "Area (visitor)",
+      "target": "visitor",
+      "zoom": 11,
+      "approxAltitudeKm": 18,
+      "holdMs": 1200,
+      "colorGrade": "OUT_1",
+      "shutterSound": true,
+      "shutterFirst": true,
+      "cameraPop": true,
+      "flash": true,
+      "highlight": {
+        "enabled": false
+      },
+      "transitionMs": 180
+    },
+    {
+      "id": "view_3_state",
+      "index": 3,
+      "name": "State — California",
+      "target": "visitor",
+      "zoom": 6.5,
+      "approxAltitudeKm": 350,
+      "holdMs": 3000,
+      "colorGrade": "OUT_2",
+      "shutterSound": true,
+      "cameraPop": true,
+      "flash": true,
+      "highlight": {
+        "enabled": true,
+        "type": "visitor_state",
+        "defaultName": "California",
+        "defaultCountry": "United States",
+        "radiusKm": 280,
+        "fadeOutMs": 260
+      },
+      "transitionMs": 200
+    },
+    {
+      "id": "hidden_cut",
+      "index": null,
+      "type": "hidden_cut",
+      "name": "Continent Jump",
+      "cloudSweepInMs": 200,
+      "flashPopMs": 120,
+      "cloudHoldMs": 200,
+      "cloudSweepOutMs": 250,
+      "destinationTarget": "india",
+      "destinationZoom": 5,
+      "colorGrade": "IN_1",
+      "transitionMs": 0
+    },
+    {
+      "id": "view_4_india",
+      "index": 4,
+      "name": "India",
+      "target": "india",
+      "zoom": 5,
+      "approxAltitudeKm": 1100,
+      "holdMs": 3000,
+      "colorGrade": "IN_1",
+      "shutterSound": false,
+      "cameraPop": false,
+      "flash": false,
+      "highlight": {
+        "enabled": false
+      },
+      "transitionMs": 0
+    },
+    {
+      "id": "view_5_rajasthan",
+      "index": 5,
+      "name": "Rajasthan",
+      "target": "rajasthan",
+      "zoom": 6.5,
+      "approxAltitudeKm": 350,
+      "holdMs": 3000,
+      "colorGrade": "IN_2",
+      "shutterSound": true,
+      "shutterFirst": false,
+      "cameraPop": true,
+      "flash": true,
+      "highlight": {
+        "enabled": false
+      },
+      "transitionMs": 200
+    },
+    {
+      "id": "view_6_jaipur",
+      "index": 6,
+      "name": "Jaipur",
+      "target": "jaipur",
+      "zoom": 10.5,
+      "approxAltitudeKm": 25,
+      "holdMs": 3000,
+      "colorGrade": "IN_3",
+      "shutterSound": true,
+      "shutterFirst": false,
+      "cameraPop": true,
+      "flash": true,
+      "highlight": {
+        "enabled": false,
+        "type": "fixed",
+        "name": "Jaipur",
+        "country": "India",
+        "radiusKm": 28,
+        "fadeOutMs": 260
+      },
+      "transitionMs": 220
+    },
+    {
+      "id": "view_7_final",
+      "index": 7,
+      "name": "Final — inside Jaipur (street)",
+      "target": "jaipur",
+      "zoom": 15,
+      "approxAltitudeKm": 1.2,
+      "holdMs": 1200,
+      "colorGrade": "LANDING",
+      "isLanding": true,
+      "landingSound": true,
+      "landingImpact": true,
+      "marker": false,
+      "crosshairLock": false,
+      "flash": true,
+      "highlight": {
+        "enabled": false
+      },
+      "transitionMs": 240
+    }
+  ]
+}
