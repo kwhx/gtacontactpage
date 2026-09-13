@@ -375,39 +375,70 @@ button { cursor: pointer; font-family: inherit; }
   initial-value: 0px;
 }
 
-/* ── Leaflet Map with True 3D Wide-Angle Perspective, Pitch, Bank & Z-Depth ───────── */
+/* ── Map Canvas (Flat Overhead View) ────────────────────────────── */
 #map {
-  --cam-pitch: 0deg;
-  --cam-bank:  0deg;
-  --cam-z:     0px;
-  --cam-scale: 1.18;
   position: absolute;
-  inset: -40% -30%; /* generous bleed so 3D rotated & banked edges never show margins */
-  width: auto;
-  height: auto;
-  transform-origin: 50% 65%;
-  transform: rotateX(var(--cam-pitch)) rotateZ(var(--cam-bank)) translateZ(var(--cam-z)) scale(var(--cam-scale));
-  transition:
-    transform 150ms cubic-bezier(0.16, 1, 0.3, 1),
-    filter 140ms ease;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #0c151b;
+  transition: filter 350ms ease;
   will-change: filter, transform;
-  background-color: #121915;
-  background-image: radial-gradient(circle at 50% 50%, #1a281f 0%, #111a15 60%, #090e0c 100%);
 }
 
-/* Prevent black flashes during tile swap */
-.leaflet-tile {
-  filter: inherit;
+/* Hide MapLibre default chrome */
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-bottom-right,
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-top-right,
+.maplibregl-ctrl-top-left {
+  display: none !important;
 }
 
-.leaflet-tile-container {
-  will-change: transform;
+/* Custom MapLibre Jaipur Radar Target Marker */
+.jaipur-marker-element {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.jaipur-marker-element .marker-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.85);
+  animation: radar-marker-pulse 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+.jaipur-marker-element .marker-dot {
+  width: 8px;
+  height: 8px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #ffffff;
+}
+
+@keyframes radar-marker-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
 }
 
 /* ── GTA V Directional Kinetic Recoil Snaps ── */
 #map.camera-shake,
+#map.camera-shake-pop,
 #map.camera-recoil-out {
-  animation: gta-recoil-out 130ms cubic-bezier(0.1, 0.9, 0.2, 1);
+  animation: gta-shake-pop 130ms cubic-bezier(0.1, 0.9, 0.2, 1);
 }
 
 #map.camera-recoil-in {
@@ -416,98 +447,78 @@ button { cursor: pointer; font-family: inherit; }
 
 #map.camera-recoil,
 #map.camera-recoil-landing {
-  animation: gta-landing-impact 260ms cubic-bezier(0.1, 0.85, 0.3, 1);
+  animation: gta-landing-impact 360ms cubic-bezier(0.15, 0.85, 0.35, 1);
+}
+
+@keyframes gta-shake-pop {
+  0%   { transform: scale(1) translate(0, 0); }
+  25%  { transform: scale(0.985) translate(-3px, 3px); }
+  55%  { transform: scale(1.008) translate(2px, -2px); }
+  80%  { transform: scale(0.998) translate(-1px, 1px); }
+  100% { transform: scale(1) translate(0, 0); }
 }
 
 @keyframes gta-recoil-out {
-  0%   { transform: rotateX(var(--cam-pitch)) rotateZ(var(--cam-bank)) translateZ(var(--cam-z)) scale(var(--cam-scale)); }
-  25%  { transform: rotateX(calc(var(--cam-pitch) + 3.5deg)) rotateZ(var(--cam-bank)) translateZ(calc(var(--cam-z) - 50px)) scale(calc(var(--cam-scale) * 0.955)) translate(-5px, 6px); }
-  55%  { transform: rotateX(calc(var(--cam-pitch) - 1.2deg)) rotateZ(var(--cam-bank)) translateZ(calc(var(--cam-z) + 14px)) scale(calc(var(--cam-scale) * 1.012)) translate(4px, -3px); }
-  80%  { transform: rotateX(var(--cam-pitch)) rotateZ(var(--cam-bank)) translateZ(var(--cam-z)) scale(calc(var(--cam-scale) * 0.998)) translate(-1px, 1px); }
-  100% { transform: rotateX(var(--cam-pitch)) rotateZ(var(--cam-bank)) translateZ(var(--cam-z)) scale(var(--cam-scale)) translate(0, 0); }
+  0%   { transform: scale(1) translate(0, 0); }
+  25%  { transform: scale(0.96) translate(-5px, 6px); }
+  55%  { transform: scale(1.015) translate(4px, -3px); }
+  80%  { transform: scale(0.998) translate(-1px, 1px); }
+  100% { transform: scale(1) translate(0, 0); }
 }
 
 @keyframes gta-recoil-in {
-  0%   { transform: rotateX(var(--cam-pitch)) rotateZ(var(--cam-bank)) translateZ(var(--cam-z)) scale(var(--cam-scale)); }
-  25%  { transform: rotateX(calc(var(--cam-pitch) - 3deg)) rotateZ(var(--cam-bank)) translateZ(calc(var(--cam-z) + 42px)) scale(calc(var(--cam-scale) * 1.045)) translate(5px, -6px); }
-  55%  { transform: rotateX(calc(var(--cam-pitch) + 1.2deg)) rotateZ(var(--cam-bank)) translateZ(calc(var(--cam-z) - 12px)) scale(calc(var(--cam-scale) * 0.988)) translate(-3px, 3px); }
-  80%  { transform: rotateX(var(--cam-pitch)) rotateZ(var(--cam-bank)) translateZ(var(--cam-z)) scale(calc(var(--cam-scale) * 1.005)) translate(1px, -1px); }
-  100% { transform: rotateX(var(--cam-pitch)) rotateZ(var(--cam-bank)) translateZ(var(--cam-z)) scale(var(--cam-scale)) translate(0, 0); }
+  0%   { transform: scale(1) translate(0, 0); }
+  25%  { transform: scale(1.04) translate(5px, -6px); }
+  55%  { transform: scale(0.985) translate(-3px, 3px); }
+  80%  { transform: scale(1.005) translate(1px, -1px); }
+  100% { transform: scale(1) translate(0, 0); }
 }
 
 @keyframes gta-landing-impact {
-  0%   { transform: rotateX(0deg) rotateZ(0deg) translateZ(0px) scale(calc(var(--cam-scale) * 1.08)) translateY(-18px); }
-  32%  { transform: rotateX(2.5deg) rotateZ(0deg) translateZ(0px) scale(calc(var(--cam-scale) * 0.95)) translateY(12px); }
-  65%  { transform: rotateX(0deg) rotateZ(0deg) translateZ(0px) scale(calc(var(--cam-scale) * 1.018)) translateY(-4px); }
-  100% { transform: rotateX(0deg) rotateZ(0deg) translateZ(0px) scale(var(--cam-scale)) translateY(0); }
+  0%   { transform: scale(1.06) translateY(-24px); }
+  28%  { transform: scale(0.96) translateY(18px); }
+  55%  { transform: scale(1.02) translateY(-6px); }
+  78%  { transform: scale(0.995) translateY(2px); }
+  100% { transform: scale(1) translateY(0); }
 }
-
-#map.tile-fallback {
-  /* Activates after 3+ tile load failures — gradient stands in for imagery */
-  background: linear-gradient(140deg,
-    #0a0f1a 0%,
-    #0f1c28 30%,
-    #141e10 65%,
-    #221508 100%
-  );
-  filter: none !important;
-}
-
-/* Hide default Leaflet chrome */
-.leaflet-control-attribution,
-.leaflet-control-zoom { display: none !important; }
 
 /* ── Overlay Stack (pointer-events: none for all) ──────────────── */
 #vignette, #grain, #color-wash, #scanlines {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 400;
 }
 
-/* Persistent vignette */
+/* Vignette — dark radial gradient frame, authentic GTA surveillance look */
 #vignette {
-  z-index: 401;
-  background: radial-gradient(ellipse at 50% 50%,
-    transparent 32%,
-    rgba(0, 0, 0, 0.68) 100%
+  z-index: 400;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 45%,
+    rgba(0, 0, 0, 0.40) 80%,
+    rgba(0, 0, 0, 0.75) 100%
   );
 }
 
-/* Film grain — animated SVG noise via background-image */
+/* Film grain texture */
 #grain {
-  z-index: 402;
-  opacity: 0;
+  z-index: 401;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  opacity: 0.18;
   mix-blend-mode: overlay;
-  transition: opacity 700ms ease;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.88' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 256px 256px;
-  animation: grain-drift 0.35s steps(1) infinite;
+  transition: opacity 400ms ease;
 }
 
-@keyframes grain-drift {
-  0%   { background-position:   0px   0px; }
-  11%  { background-position: -18px -14px; }
-  22%  { background-position:  16px   8px; }
-  33%  { background-position:  -9px  18px; }
-  44%  { background-position:  22px  -8px; }
-  55%  { background-position: -16px  22px; }
-  66%  { background-position:  12px -20px; }
-  77%  { background-position: -22px  12px; }
-  88%  { background-position:  18px -16px; }
-  100% { background-position:   0px   0px; }
-}
-
-/* Color wash — blend-mode tint that layers on top of map
-   (mix-blend-mode: color applies the hue of the overlay to map luminance) */
+/* Color wash — dynamic per phase */
 #color-wash {
-  z-index: 403;
+  z-index: 402;
+  background: rgba(110, 175, 42, 0.50);
   mix-blend-mode: color;
-  background: transparent;
-  transition: background 180ms ease;
+  transition: background 350ms ease;
 }
 
-/* ── GTA V Volumetric Clouds (Procedural multi-layer atmosphere) ── */
+/* ── GTA V Subtle Volumetric Clouds (Postcard Accent Layer) ─────── */
 #cloud-container {
   position: absolute;
   inset: 0;
@@ -515,7 +526,7 @@ button { cursor: pointer; font-family: inherit; }
   z-index: 415;
   overflow: hidden;
   opacity: 0;
-  transition: opacity 320ms ease;
+  transition: opacity 140ms ease;
 }
 
 .cloud-layer {
@@ -527,73 +538,37 @@ button { cursor: pointer; font-family: inherit; }
 
 #cloud-layer-back {
   background:
-    radial-gradient(ellipse 60% 45% at 20% 30%, rgba(255, 255, 255, 0.85) 0%, rgba(210, 230, 255, 0.4) 45%, transparent 75%),
-    radial-gradient(ellipse 70% 55% at 75% 65%, rgba(255, 255, 255, 0.9) 0%, rgba(200, 225, 255, 0.38) 50%, transparent 75%),
-    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(255, 255, 255, 0.75) 0%, rgba(195, 220, 255, 0.3) 55%, transparent 80%),
-    radial-gradient(circle at 85% 20%, rgba(255, 255, 255, 0.8) 0%, transparent 50%);
+    radial-gradient(ellipse 60% 45% at 20% 30%, rgba(255, 255, 255, 0.40) 0%, rgba(210, 230, 255, 0.20) 45%, transparent 75%),
+    radial-gradient(ellipse 70% 55% at 75% 65%, rgba(255, 255, 255, 0.42) 0%, rgba(200, 225, 255, 0.18) 50%, transparent 75%),
+    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(255, 255, 255, 0.35) 0%, rgba(195, 220, 255, 0.15) 55%, transparent 80%),
+    radial-gradient(circle at 85% 20%, rgba(255, 255, 255, 0.38) 0%, transparent 50%);
   filter: blur(24px);
-  opacity: 0.82;
+  opacity: 0.35;
 }
 
 #cloud-layer-mid {
   background:
-    radial-gradient(ellipse 65% 55% at 35% 45%, rgba(255, 255, 255, 0.94) 0%, rgba(225, 240, 255, 0.5) 45%, transparent 70%),
-    radial-gradient(ellipse 55% 45% at 70% 25%, rgba(255, 255, 255, 0.9) 0%, rgba(215, 235, 255, 0.42) 50%, transparent 75%),
-    radial-gradient(ellipse 50% 50% at 15% 75%, rgba(255, 255, 255, 0.92) 0%, rgba(210, 230, 255, 0.4) 45%, transparent 70%);
+    radial-gradient(ellipse 65% 55% at 35% 45%, rgba(255, 255, 255, 0.45) 0%, rgba(225, 240, 255, 0.22) 45%, transparent 70%),
+    radial-gradient(ellipse 55% 45% at 70% 25%, rgba(255, 255, 255, 0.40) 0%, rgba(215, 235, 255, 0.20) 50%, transparent 75%),
+    radial-gradient(ellipse 50% 50% at 15% 75%, rgba(255, 255, 255, 0.42) 0%, rgba(210, 230, 255, 0.18) 45%, transparent 70%);
   filter: blur(36px);
-  opacity: 0.88;
+  opacity: 0.40;
 }
 
 #cloud-layer-front {
   background:
-    radial-gradient(circle at 40% 60%, rgba(255, 255, 255, 0.72) 0%, rgba(240, 248, 255, 0.28) 40%, transparent 70%),
-    radial-gradient(circle at 80% 40%, rgba(255, 255, 255, 0.78) 0%, rgba(230, 245, 255, 0.3) 45%, transparent 70%);
+    radial-gradient(circle at 40% 60%, rgba(255, 255, 255, 0.35) 0%, rgba(240, 248, 255, 0.14) 40%, transparent 70%),
+    radial-gradient(circle at 80% 40%, rgba(255, 255, 255, 0.38) 0%, rgba(230, 245, 255, 0.15) 45%, transparent 70%);
   filter: blur(52px);
-  opacity: 0.75;
+  opacity: 0.35;
 }
 
-/* Clouds active at high altitude */
+/* Clouds visible during waypoint holds: capped at 0.40 max */
 #cloud-container.clouds-active {
-  opacity: 1;
+  opacity: 0.40;
 }
 
-/* Clouds rushing during supersonic traversal */
-#cloud-container.clouds-traveling #cloud-layer-back {
-  animation: clouds-drift-back 0.45s linear infinite;
-}
-
-#cloud-container.clouds-traveling #cloud-layer-mid {
-  animation: clouds-drift-mid 0.35s linear infinite;
-}
-
-#cloud-container.clouds-traveling #cloud-layer-front {
-  animation: clouds-drift-front 0.25s linear infinite;
-}
-
-@keyframes clouds-drift-back {
-  0%   { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(-22%, -14%) scale(1.12); }
-}
-
-@keyframes clouds-drift-mid {
-  0%   { transform: translate(0, 0) scale(1.05); }
-  100% { transform: translate(-32%, -20%) scale(1.22); }
-}
-
-@keyframes clouds-drift-front {
-  0%   { transform: translate(0, 0) scale(1.1); }
-  100% { transform: translate(-48%, -28%) scale(1.38); }
-}
-
-/* Clouds parting & dissolving over Jaipur */
-#cloud-container.clouds-part {
-  opacity: 0;
-  transform: scale(2.2) translate(18%, -14%);
-  filter: blur(60px);
-  transition: opacity 500ms ease-out, transform 600ms cubic-bezier(0.16, 1, 0.3, 1), filter 550ms ease;
-}
-
-/* ── GTA V Blinding White Photoflash ── */
+/* ── GTA V Quick Photoflash Burst (~110ms, peak opacity ~0.85) ──── */
 #white-flash {
   position: absolute;
   inset: 0;
@@ -604,40 +579,12 @@ button { cursor: pointer; font-family: inherit; }
 }
 
 #white-flash.flash-burst {
-  animation: gta-flash-burst 200ms ease-out forwards;
-}
-
-#white-flash.flash-pierce {
-  animation: gta-flash-pierce 360ms ease-out forwards;
+  animation: gta-flash-burst 110ms cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
 }
 
 @keyframes gta-flash-burst {
-  0% {
-    opacity: 1;
-    background: radial-gradient(circle at 50% 50%, #ffffff 40%, rgba(255, 255, 255, 0.98) 70%, rgba(200, 230, 255, 0.9) 100%);
-  }
-  20% {
-    opacity: 0.92;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes gta-flash-pierce {
-  0% {
-    opacity: 1;
-    background: radial-gradient(circle at 50% 50%, #ffffff 25%, rgba(255, 255, 255, 1) 55%, rgba(185, 220, 255, 0.9) 100%);
-    filter: brightness(2.4);
-  }
-  30% {
-    opacity: 0.88;
-    filter: brightness(1.7);
-  }
-  100% {
-    opacity: 0;
-    filter: brightness(1);
-  }
+  0%   { opacity: 0.85; }
+  100% { opacity: 0; }
 }
 
 /* Subtle CRT scanlines — always-on low-opacity texture */
@@ -820,7 +767,62 @@ button { cursor: pointer; font-family: inherit; }
   transition-delay: 0ms !important;
 }
 
+/* ── Idle Camera Breathing ─────────────────────────────────────────
+   Subtle alive-feeling drift so static holds never look frozen.
+   Applied/removed by addBreathing() / removeBreathing() in script.
+──────────────────────────────────────────────────────────────────── */
+#map.breathing {
+  animation: camera-breathe 4.5s ease-in-out infinite;
+}
 
+@keyframes camera-breathe {
+  0%   { transform: scale(1) translate(0px, 0px); }
+  25%  { transform: scale(1.006) translate(3px, 2px); }
+  50%  { transform: scale(1.010) translate(-2px, 4px); }
+  75%  { transform: scale(1.005) translate(2px, -2px); }
+  100% { transform: scale(1) translate(0px, 0px); }
+}
+
+/* ── State Layer Fade-Out ──────────────────────────────────────────
+   Applied to the SVG path of the state highlight before removal.
+──────────────────────────────────────────────────────────────────── */
+.fading-out {
+  opacity: 0 !important;
+  transition: opacity 260ms ease-out !important;
+}
+
+/* ── Speed Streaks (Radial Motion Blur) ────────────────────────────
+   Fires during the atmospheric transition / supersonic Pacific
+   traverse. A radial zoom-burst that sells the sudden velocity.
+──────────────────────────────────────────────────────────────────── */
+#speed-streaks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 416;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse 80% 80% at 50% 50%,
+    transparent 30%,
+    rgba(255, 255, 255, 0.08) 55%,
+    rgba(255, 255, 255, 0.22) 75%,
+    rgba(255, 255, 255, 0.04) 90%,
+    transparent 100%
+  );
+  mix-blend-mode: screen;
+  transform: scale(0.85);
+}
+
+#speed-streaks.active {
+  animation: speed-streak-burst 420ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes speed-streak-burst {
+  0%   { opacity: 0;    transform: scale(0.85); }
+  8%   { opacity: 0.9;  transform: scale(1.0);  }
+  30%  { opacity: 0.65; transform: scale(1.12); }
+  100% { opacity: 0;    transform: scale(1.55); }
+}
 
 /* ────────────────────────────────────────────────────────────────
    MOBILE  (≤ 768px)

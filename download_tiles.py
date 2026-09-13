@@ -48,27 +48,60 @@ def get_tiles_for_radius(lat, lng, zoom, radius_x=2, radius_y=2):
 def collect_all_sequence_tiles():
     all_tiles = set()
 
-    # 1. High Orbit: Full planet coverage so orbital traverse never has missing tiles
-    # Zoom 3: All 64 tiles of Earth (8x8)
+    # ── OUTBOUND: LOS SANTOS ────────────────────────────────────────────────────
+
+    # Ground / Overhead Camera: Street-level Los Santos (zoom 12)
+    # Large radius to cover full 3D pitch tilt bleed + widescreen edges
+    all_tiles.update(get_tiles_for_radius(LOS_ANGELES[0], LOS_ANGELES[1], 12, 9, 8))  # Zoom 12 — rooftop/street level
+
+    # Zoom-out #1: City blocks → city-scale (zoom 10)
+    all_tiles.update(get_tiles_for_radius(LOS_ANGELES[0], LOS_ANGELES[1], 10, 8, 7))  # Zoom 10 — city scale
+
+    # Zoom-out #2: City → regional (zoom 8)
+    all_tiles.update(get_tiles_for_radius(LOS_ANGELES[0], LOS_ANGELES[1], 8, 8, 7))   # Zoom 8 — regional
+
+    # Zoom-out #3: Regional → continental (zoom 6)
+    all_tiles.update(get_tiles_for_radius(LOS_ANGELES[0], LOS_ANGELES[1], 6, 8, 7))   # Zoom 6 — continental
+
+    # High-altitude settle (zoom 4)
+    all_tiles.update(get_tiles_for_radius(LOS_ANGELES[0], LOS_ANGELES[1], 4, 5, 4))   # Zoom 4 — near-global
+
+    # ── ORBITAL: Full planet at zoom 3 & 4 — traverse never shows missing tiles ──
+    # Zoom 3: All 64 tiles of Earth (8×8 grid)
     for x in range(8):
         for y in range(8):
             all_tiles.add((3, y, x))
 
-    # Zoom 4: All 256 tiles of Earth (16x16)
+    # Zoom 4: All 256 tiles of Earth (16×16 grid)
     for x in range(16):
         for y in range(16):
             all_tiles.add((4, y, x))
 
-    # 2. Origin: Los Santos / Los Angeles (generous 15x13 tile grid for 3D perspective tilt & 4K screens)
-    all_tiles.update(get_tiles_for_radius(LOS_ANGELES[0], LOS_ANGELES[1], 7, 7, 6))  # Zoom 7 (Ground view)
-    all_tiles.update(get_tiles_for_radius(LOS_ANGELES[0], LOS_ANGELES[1], 6, 7, 6))  # Zoom 6 (Out Step 1)
-    all_tiles.update(get_tiles_for_radius(LOS_ANGELES[0], LOS_ANGELES[1], 5, 7, 6))  # Zoom 5 (Out Step 2)
+    # ── PACIFIC TRAVERSE WAYPOINTS (zoom 3 — already covered by full-earth above) ──
+    # Waypoint A: Mid-Pacific (near Hawaii corridor)
+    MID_PACIFIC = (20.0, -155.0)
+    all_tiles.update(get_tiles_for_radius(MID_PACIFIC[0], MID_PACIFIC[1], 3, 2, 2))
 
-    # 3. Descent & Landing: Jaipur, Rajasthan (generous 15x13 and 17x15 grids)
-    all_tiles.update(get_tiles_for_radius(JAIPUR[0], JAIPUR[1], 6, 7, 6))   # Zoom 6 (In Step 1: Subcontinent)
-    all_tiles.update(get_tiles_for_radius(JAIPUR[0], JAIPUR[1], 9, 7, 6))   # Zoom 9 (In Step 2: Metro)
-    all_tiles.update(get_tiles_for_radius(JAIPUR[0], JAIPUR[1], 12, 7, 6))  # Zoom 12 (In Step 3: Urban grid)
-    all_tiles.update(get_tiles_for_radius(JAIPUR[0], JAIPUR[1], 15, 8, 7))  # Zoom 15 (Landing + dragging buffer)
+    # Waypoint B: South-East Asia approach (Bay of Bengal)
+    BAY_OF_BENGAL = (15.0, 80.0)
+    all_tiles.update(get_tiles_for_radius(BAY_OF_BENGAL[0], BAY_OF_BENGAL[1], 3, 2, 2))
+
+    # ── INBOUND: JAIPUR ─────────────────────────────────────────────────────────
+
+    # Zoom-in #1: India → Rajasthan (zoom 6)
+    all_tiles.update(get_tiles_for_radius(JAIPUR[0], JAIPUR[1], 6, 8, 7))    # Zoom 6 — subcontinent
+
+    # Zoom-in #2: Rajasthan → Jaipur (zoom 9)
+    all_tiles.update(get_tiles_for_radius(JAIPUR[0], JAIPUR[1], 9, 8, 7))    # Zoom 9 — metro
+
+    # Zoom-in #3: Jaipur → city scale (zoom 12)
+    all_tiles.update(get_tiles_for_radius(JAIPUR[0], JAIPUR[1], 12, 8, 7))   # Zoom 12 — urban grid
+
+    # Final descent #1: city → low-altitude (zoom 14)
+    all_tiles.update(get_tiles_for_radius(JAIPUR[0], JAIPUR[1], 14, 8, 7))   # Zoom 14 — low altitude
+
+    # Landing / final zoom (zoom 15)
+    all_tiles.update(get_tiles_for_radius(JAIPUR[0], JAIPUR[1], 15, 9, 8))   # Zoom 15 — street level
 
     return sorted(list(all_tiles))
 

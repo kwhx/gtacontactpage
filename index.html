@@ -8,8 +8,8 @@
   <meta name="description"
     content="Get in touch with Khwahish — developer & designer based in Jaipur, India. Let's build something great together.">
 
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <!-- MapLibre GL CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 
   <!-- Google Fonts: Rajdhani (HUD) + Inter (form) + Newsreader (editorial) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,7 +18,7 @@
     href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&display=swap"
     rel="stylesheet">
 
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 
 <body>
@@ -108,6 +108,9 @@
         <div id="cloud-layer-front" class="cloud-layer"></div>
       </div>
 
+      <!-- Supersonic Speed Streaks (radial motion-blur burst during Pacific traverse) -->
+      <div id="speed-streaks" aria-hidden="true"></div>
+
       <!-- GTA V Blinding White Photoflash -->
       <div id="white-flash" aria-hidden="true"></div>
 
@@ -169,9 +172,9 @@
 
 
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="script.js?v=3"></script>
+  <!-- MapLibre GL JS -->
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="script.js?v=9"></script>
 
 </body>
 

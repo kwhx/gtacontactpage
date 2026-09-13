@@ -1,43 +1,43 @@
 /* ================================================================
    script.js  —  GTA V-Style Character Switch · Contact Page
+   Powered by MapLibre GL JS v4 with Native 3D WebGL Globe Projection.
    Plain ES2020, no build step.
 
    IMPORTANT: Serve via a static HTTP server, not file://
      python3 -m http.server 8080
-   Cross-origin fetch to ipapi.co / ipwho.is fails on null origin.
    ================================================================ */
 
 'use strict';
 
-/* ── Destination & Fallbacks ────────────────────────────────────── */
-const JAIPUR = [26.9124, 75.7873];
-const FALLBACK_LOC = [34.0522, -118.2437]; // Los Angeles (Los Santos — GTA V homage)
-
-const TILE_FAIL_THRESHOLD = 3;
+/* ── Destination & Fallbacks ([lng, lat] for MapLibre) ───────────── */
+const JAIPUR = [75.7873, 26.9124];
+const FALLBACK_LOC = [-118.2437, 34.0522]; // Los Santos / Los Angeles
 
 /* ── Phase Enum ─────────────────────────────────────────────────── */
 const PHASE = Object.freeze({
-  GROUND: 0,
-  OUT_STEP_1: 1,
-  OUT_STEP_2: 2,
-  OUT_STEP_3: 3,
-  ORBIT: 4,
-  TRAVERSE: 5,
-  PIERCE: 6,
-  IN_STEP_1: 7,
-  IN_STEP_2: 8,
-  IN_STEP_3: 9,
-  LANDING: 10,
-  DOCK: 11,
-  SKIP: 99,
+  GROUND:      0,   // street-level Los Santos
+  OUT_1:       1,   // 12.5 → 8.0
+  OUT_2:       2,   // 8.0 → 4.5
+  OUT_3:       3,   // 4.5 → 3.0
+  PAN_1:       4,   // waypoint 1 (~25%)
+  PAN_2:       5,   // waypoint 2 (~55%)
+  PAN_3:       6,   // waypoint 3 (~85%, over Jaipur region)
+  IN_1:        7,   // 3.0 → 7.0
+  IN_2:        8,   // 7.0 → 11.0
+  IN_3:        9,   // 11.0 → 15.0
+  LANDING:     10,  // touchdown & suspension recoil
+  DOCK:        11,  // contact UI reveal
+  SKIP:        99,
 });
 
 /* ── Authentic GTA V Color Grades ──────────────────────────────────
    - Ground level: Rich natural contrast, subtle filmic daylight
    - Ascending: Progressive cooling into desaturated surveillance tone
-   - High Orbit: Iconic GTA V slate/teal monochrome satellite look
-   - Cloud break & Descent: Warming up rapidly
-   - Landing Jaipur: Golden hour Rajasthan warmth & vibrant clarity
+   - PAN WP 1: Cool green
+   - PAN WP 2: Neutral grey-blue
+   - PAN WP 3: Warm amber begins
+   - IN Steps: Progressively warming golden hour into Jaipur street clarity
+   - Landing: Crisp golden hour warmth & vibrant clarity
 ────────────────────────────────────────────────────────────────── */
 const GRADES = {
   GROUND: {
@@ -46,43 +46,53 @@ const GRADES = {
     grain: 0.18,
   },
   OUT_1: {
-    filter: 'contrast(1.28) brightness(0.98) saturate(1.20) sepia(0.32) hue-rotate(68deg)',
-    wash: 'rgba(85, 145, 65, 0.30)',
-    grain: 0.22,
+    filter: 'contrast(1.30) brightness(1.00) saturate(1.35) sepia(0.28) hue-rotate(60deg)',
+    wash: 'rgba(95, 155, 60, 0.28)',
+    grain: 0.20,
   },
   OUT_2: {
-    filter: 'contrast(1.28) brightness(0.90) saturate(0.50) hue-rotate(120deg)',
-    wash: 'rgba(25, 75, 115, 0.18)',
-    grain: 0.28,
+    filter: 'contrast(1.28) brightness(0.93) saturate(0.75) hue-rotate(95deg)',
+    wash: 'rgba(50, 100, 100, 0.20)',
+    grain: 0.26,
   },
   OUT_3: {
-    filter: 'contrast(1.36) brightness(0.84) saturate(0.24) hue-rotate(175deg)',
-    wash: 'rgba(20, 60, 100, 0.25)',
-    grain: 0.35,
+    filter: 'contrast(1.32) brightness(0.87) saturate(0.38) hue-rotate(150deg)',
+    wash: 'rgba(22, 68, 108, 0.24)',
+    grain: 0.32,
   },
-  ORBIT: {
-    filter: 'contrast(1.48) brightness(0.80) saturate(0.12) hue-rotate(195deg)',
-    wash: 'rgba(18, 52, 90, 0.32)',
-    grain: 0.40,
+  PAN_1: {
+    filter: 'contrast(1.30) brightness(0.92) saturate(0.95) hue-rotate(75deg)',
+    wash: 'rgba(35, 105, 65, 0.24)',
+    grain: 0.26,
+  },
+  PAN_2: {
+    filter: 'contrast(1.28) brightness(0.90) saturate(0.45) hue-rotate(175deg)',
+    wash: 'rgba(28, 62, 92, 0.26)',
+    grain: 0.28,
+  },
+  PAN_3: {
+    filter: 'contrast(1.26) brightness(0.94) saturate(0.90) hue-rotate(22deg)',
+    wash: 'rgba(115, 78, 28, 0.20)',
+    grain: 0.22,
   },
   IN_1: {
-    filter: 'contrast(1.32) brightness(0.86) saturate(0.45) hue-rotate(120deg)',
-    wash: 'rgba(45, 95, 110, 0.18)',
-    grain: 0.25,
+    filter: 'contrast(1.28) brightness(0.92) saturate(0.80) hue-rotate(18deg)',
+    wash: 'rgba(95, 70, 30, 0.16)',
+    grain: 0.20,
   },
   IN_2: {
-    filter: 'contrast(1.24) brightness(0.95) saturate(0.85)',
-    wash: 'rgba(50, 70, 90, 0.10)',
-    grain: 0.16,
+    filter: 'contrast(1.22) brightness(0.96) saturate(0.95) hue-rotate(10deg)',
+    wash: 'rgba(100, 72, 25, 0.12)',
+    grain: 0.14,
   },
   IN_3: {
-    filter: 'contrast(1.18) brightness(0.98) saturate(0.95)',
-    wash: 'rgba(60, 75, 90, 0.08)',
+    filter: 'contrast(1.18) brightness(0.98) saturate(1.05) hue-rotate(5deg)',
+    wash: 'rgba(90, 65, 30, 0.08)',
     grain: 0.08,
   },
   LANDING: {
-    filter: 'contrast(1.15) brightness(1.02) saturate(1.02)',
-    wash: 'rgba(255, 255, 255, 0.04)',
+    filter: 'contrast(1.15) brightness(1.02) saturate(1.12) hue-rotate(2deg)',
+    wash: 'rgba(110, 75, 20, 0.06)',
     grain: 0.04,
   },
 };
@@ -90,16 +100,14 @@ const GRADES = {
 /* ── Module State ───────────────────────────────────────────────── */
 let map = null;
 let currentPhase = PHASE.GROUND;
-let tileFailCount = 0;
-let markerAdded = false;
-let visitorCoords = [...FALLBACK_LOC];
+let visitorCoords = [...FALLBACK_LOC]; // [lng, lat]
 let visitorState = 'California';
 let visitorCountry = 'United States';
 let visitorCity = 'Los Angeles';
-let stateGeoLayer = null;
 let selectedBudget = null;
 let isMobile = false;
-let soundEnabled = false; // explicit opt-in only — never plays until the user turns it on
+let soundEnabled = false; // explicit opt-in only
+let jaipurMarker = null;
 
 /* ── DOM Helper ─────────────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
@@ -132,6 +140,7 @@ async function fetchLocation() {
       ? {
         lat: roundCoord(d.latitude),
         lng: roundCoord(d.longitude),
+        coords: [roundCoord(d.longitude), roundCoord(d.latitude)],
         state: d.region || d.region_code || d.city || 'California',
         country: d.country_name || d.country || 'United States',
         city: d.city || '',
@@ -145,6 +154,7 @@ async function fetchLocation() {
         ? {
           lat: roundCoord(d.latitude),
           lng: roundCoord(d.longitude),
+          coords: [roundCoord(d.longitude), roundCoord(d.latitude)],
           state: d.region || d.region_code || d.city || 'California',
           country: d.country || 'United States',
           city: d.city || '',
@@ -156,171 +166,143 @@ async function fetchLocation() {
   return loc;
 }
 
-/* ── Tile Math & Preloader Engine ───────────────────────────────── */
-function latLngToTile(lat, lng, zoom) {
-  const n = Math.pow(2, zoom);
-  const x = Math.floor(((lng + 180) / 360) * n);
-  const latRad = (lat * Math.PI) / 180;
-  const y = Math.floor(
-    ((1 - Math.asinh(Math.tan(latRad)) / Math.PI) / 2) * n
-  );
-  return { x: Math.max(0, Math.min(n - 1, x)), y: Math.max(0, Math.min(n - 1, y)), z: zoom };
+/* ── MapLibre GL Flat Overhead Engine ───────────────────────────── */
+function initMap(center, zoom = 12.5, pitch = 0, bearing = 0) {
+  return new Promise((resolve) => {
+    map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {
+          'esri-satellite': {
+            type: 'raster',
+            tiles: [
+              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+            ],
+            tileSize: 256,
+            maxzoom: 19,
+            attribution: ''
+          }
+        },
+        layers: [
+          {
+            id: 'esri-satellite-layer',
+            type: 'raster',
+            source: 'esri-satellite'
+          }
+        ]
+      },
+      center: center,
+      zoom: zoom,
+      pitch: 0,
+      bearing: 0,
+      maxPitch: 0,
+      interactive: false,
+      attributionControl: false
+    });
+
+    map.once('load', () => {
+      resolve();
+    });
+
+    // Safety fallback
+    setTimeout(resolve, 2000);
+  });
 }
 
-function getTileUrlsForLocation(lat, lng, zoom, radius = 2) {
-  const center = latLngToTile(lat, lng, zoom);
+/* ── Camera Motion (Discrete Steps & Instant Waypoint Cuts) ─────── */
+function easeCamera({ center, zoom, duration = 180, easing = (t) => t }) {
+  return new Promise((resolve) => {
+    if (currentPhase === PHASE.SKIP) { resolve(); return; }
+
+    let resolved = false;
+    const finish = () => {
+      if (!resolved) {
+        resolved = true;
+        map.off('moveend', finish);
+        resolve();
+      }
+    };
+
+    map.once('moveend', finish);
+
+    map.easeTo({
+      center,
+      zoom,
+      pitch: 0,
+      bearing: 0,
+      duration,
+      easing,
+      essential: true
+    });
+
+    setTimeout(finish, duration + 60);
+  });
+}
+
+function jumpCamera(center, zoom = 3.0) {
+  if (currentPhase === PHASE.SKIP || !map) return;
+  map.jumpTo({
+    center,
+    zoom,
+    pitch: 0,
+    bearing: 0
+  });
+}
+
+function flyCamera(opts) {
+  return easeCamera(opts);
+}
+
+function triggerCameraPop() {
+  const mapEl = $('map');
+  if (!mapEl) return;
+  mapEl.classList.remove('camera-shake', 'camera-shake-pop');
+  void mapEl.offsetWidth; // force DOM reflow
+  mapEl.classList.add('camera-shake-pop');
+}
+
+/* ── Tile Prefetching Safety Net ────────────────────────────────── */
+function lngLatToTile(lng, lat, z) {
+  const n = Math.pow(2, z);
+  const x = Math.floor(((lng + 180) / 360) * n);
+  const latRad = lat * Math.PI / 180;
+  const y = Math.floor((1 - Math.asinh(Math.tan(latRad)) / Math.PI) / 2 * n);
+  const maxTile = Math.floor(n - 1);
+  return {
+    x: Math.max(0, Math.min(maxTile, x)),
+    y: Math.max(0, Math.min(maxTile, y))
+  };
+}
+
+function prefetchTilesForPoint(coords, zoom, radius = 1) {
+  const center = lngLatToTile(coords[0], coords[1], zoom);
   const maxTile = Math.pow(2, zoom) - 1;
-  const urls = [];
   for (let dx = -radius; dx <= radius; dx++) {
     for (let dy = -radius; dy <= radius; dy++) {
-      const x = (center.x + dx + (maxTile + 1)) % (maxTile + 1);
+      const x = ((center.x + dx) % (maxTile + 1) + (maxTile + 1)) % (maxTile + 1);
       const y = center.y + dy;
       if (y >= 0 && y <= maxTile) {
-        urls.push(`assets/tiles/${zoom}/${y}/${x}.jpg`);
+        const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${y}/${x}`;
+        const img = new Image();
+        img.src = url;
       }
     }
   }
-  return urls;
 }
 
-const preloadedTileSet = new Set();
-
-function preloadTile(url) {
-  if (preloadedTileSet.has(url)) return Promise.resolve(true);
-  preloadedTileSet.add(url);
-  return new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => resolve(true);
-    img.onerror = () => resolve(false);
-    img.src = url;
-  });
-}
-
-function preloadBatch(urls, maxConcurrent = 6) {
-  return new Promise(resolve => {
-    if (!urls.length) { resolve(); return; }
-    let index = 0;
-    let active = 0;
-    let finished = 0;
-
-    const next = () => {
-      if (finished >= urls.length) {
-        resolve();
-        return;
-      }
-      while (active < maxConcurrent && index < urls.length) {
-        const url = urls[index++];
-        active++;
-        preloadTile(url).then(() => {
-          active--;
-          finished++;
-          next();
-        });
-      }
-    };
-    next();
-  });
-}
-
-/**
- * Preloads all critical map tiles into browser HTTP cache.
- * Exported to window so parent portfolio pages can call this
- * early in the background (e.g. when landing on Hero section).
- */
-async function preloadGTAMap(originCoords = null) {
-  const origin = originCoords || visitorCoords || FALLBACK_LOC;
-
-  // 1. Critical Priority: Initial state view at visitor origin (zoom 7 & 6)
-  const initialUrls = [
-    ...getTileUrlsForLocation(origin[0], origin[1], 7, 2),
-    ...getTileUrlsForLocation(origin[0], origin[1], 6, 2),
-  ];
-
-  // 2. High Priority: Final destination Jaipur landing (zoom 15 & 12)
-  const jaipurFinalUrls = [
-    ...getTileUrlsForLocation(JAIPUR[0], JAIPUR[1], 15, 2),
-    ...getTileUrlsForLocation(JAIPUR[0], JAIPUR[1], 12, 2),
-  ];
-
-  // 3. Medium Priority: Intermediate zoom steps & orbital flight
-  const intermediateUrls = [
-    ...getTileUrlsForLocation(origin[0], origin[1], 5, 1),
-    ...getTileUrlsForLocation(origin[0], origin[1], 4, 1),
-    ...getTileUrlsForLocation(origin[0], origin[1], 3, 1),
-    ...getTileUrlsForLocation(JAIPUR[0], JAIPUR[1], 3, 1),
-    ...getTileUrlsForLocation(JAIPUR[0], JAIPUR[1], 6, 2),
-    ...getTileUrlsForLocation(JAIPUR[0], JAIPUR[1], 9, 2),
-  ];
-
-  // Warm origin and final landing tiles first
-  await preloadBatch([...initialUrls, ...jaipurFinalUrls], 6);
-
-  // Warm intermediate steps in the background
-  preloadBatch(intermediateUrls, 6);
-}
-
-// Export for parent portfolio page integration
-window.preloadGTAMap = preloadGTAMap;
-
-/* ── Leaflet Map Init ───────────────────────────────────────────── */
-function initMap(center, zoom) {
-  map = L.map('map', {
-    center,
-    zoom,
-    zoomControl: false,
-    attributionControl: false,
-    dragging: false,
-    touchZoom: false,
-    scrollWheelZoom: false,
-    doubleClickZoom: false,
-    keyboard: false,
-    fadeAnimation: true,
-    zoomAnimation: true,
-    markerZoomAnimation: true,
-  });
-
-  // Custom TileLayer that loads pre-cached local tiles with transparent online fallback
-  const LocalTileLayer = L.TileLayer.extend({
-    createTile: function (coords, done) {
-      const tile = document.createElement('img');
-      tile.setAttribute('role', 'presentation');
-
-      L.DomEvent.on(tile, 'load', L.Util.bind(this._tileOnLoad, this, done, tile));
-
-      let triedOnline = false;
-      tile.onerror = () => {
-        if (!triedOnline) {
-          triedOnline = true;
-          tile.src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${coords.z}/${coords.y}/${coords.x}`;
-        } else {
-          this._tileOnError(done, tile, new Error('Tile load error'));
-        }
-      };
-
-      tile.src = this.getTileUrl(coords);
-      return tile;
-    }
-  });
-
-  const tiles = new LocalTileLayer(
-    'assets/tiles/{z}/{y}/{x}.jpg',
-    {
-      maxZoom: 18,
-      maxNativeZoom: 18,
-      updateWhenIdle: false,
-      updateInterval: 50,
-      keepBuffer: 14,
-    }
-  );
-
-  tiles.on('tileerror', () => {
-    tileFailCount++;
-    if (tileFailCount >= TILE_FAIL_THRESHOLD) {
-      $('map').classList.add('tile-fallback');
-    }
-  });
-
-  tiles.addTo(map);
+function prefetchSequenceTiles(origin, dest, waypoints) {
+  try {
+    // Prefetch zoom 3 tiles covering global waypoints
+    waypoints.forEach(wp => prefetchTilesForPoint(wp, 3, 2));
+    prefetchTilesForPoint(dest, 3, 2);
+    // Prefetch descent zoom steps into Jaipur
+    prefetchTilesForPoint(dest, 7, 2);
+    prefetchTilesForPoint(dest, 11, 2);
+    prefetchTilesForPoint(dest, 15, 2);
+  } catch (e) {
+    console.warn('Tile prefetch error:', e);
+  }
 }
 
 /* ── Color Grade ────────────────────────────────────────────────── */
@@ -338,30 +320,35 @@ function applyGrade(gradeKey) {
   if (grainEl) grainEl.style.opacity = String(g.grain);
 }
 
-/* ── Flash Triggers (Blinding White Photoflash) ─────────────────── */
-function triggerFlash(type = 'burst') {
+/* ── Flash Triggers (Short ~110ms Burst) ────────────────────────── */
+function triggerFlash() {
   const flash = $('white-flash');
   if (!flash) return;
   flash.className = '';
   void flash.offsetWidth; // force DOM reflow
-  flash.className = (type === 'pierce') ? 'flash-pierce' : 'flash-burst';
+  flash.className = 'flash-burst';
 }
 
-/* ── Cloud Layer Controls ──────────────────────────────────────── */
+/* ── Cloud Layer Controls (Postcard Accent During Holds) ────────── */
 function setClouds(state) {
   const clouds = $('cloud-container');
   if (!clouds) return;
-  clouds.className = '';
   if (state === 'active') {
     clouds.classList.add('clouds-active');
-  } else if (state === 'traveling') {
-    clouds.classList.add('clouds-active', 'clouds-traveling');
-  } else if (state === 'part') {
-    clouds.classList.add('clouds-part');
+  } else {
+    clouds.classList.remove('clouds-active');
   }
 }
 
-/* ── Idle Camera Breathing (prevents frozen-slideshow feel on holds) ─ */
+function showPostcardClouds() {
+  setClouds('active');
+}
+
+function hideClouds() {
+  setClouds('none');
+}
+
+/* ── Idle Camera Breathing ──────────────────────────────────────── */
 function addBreathing() {
   const mapEl = $('map');
   if (mapEl) mapEl.classList.add('breathing');
@@ -371,12 +358,12 @@ function removeBreathing() {
   if (mapEl) mapEl.classList.remove('breathing');
 }
 
-/* ── Supersonic Speed Streaks (radial motion blur during the whip) ── */
+/* ── Supersonic Speed Streaks ───────────────────────────────────── */
 function triggerSpeedStreaks() {
   const el = $('speed-streaks');
   if (!el) return;
   el.classList.remove('active');
-  void el.offsetWidth; // force reflow so the animation replays
+  void el.offsetWidth;
   el.classList.add('active');
 }
 
@@ -403,37 +390,89 @@ function hideCrosshair() {
   }
 }
 
-/* ── Jaipur Marker ──────────────────────────────────────────────── */
+/* ── MapLibre Jaipur Radar Target Marker ────────────────────────── */
 function addJaipurMarker() {
-  // Clean satellite view — no marker dot
+  if (jaipurMarker || !map) return;
+  const el = document.createElement('div');
+  el.className = 'jaipur-marker-element';
+  el.innerHTML = `
+    <div class="marker-ring" aria-hidden="true"></div>
+    <div class="marker-dot" aria-hidden="true"></div>
+  `;
+
+  jaipurMarker = new maplibregl.Marker({ element: el })
+    .setLngLat(JAIPUR)
+    .addTo(map);
 }
 
-/* ── Origin State White Highlight ───────────────────────────────── */
+/* ── Origin State White Radar Highlight ─────────────────────────── */
+function createGeoJSONCircle(center, radiusKm, points = 64) {
+  const km = radiusKm;
+  const ret = [];
+  const distanceX = km / (111.320 * Math.cos(center[1] * Math.PI / 180));
+  const distanceY = km / 110.574;
+
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * (2 * Math.PI);
+    const x = distanceX * Math.cos(theta);
+    const y = distanceY * Math.sin(theta);
+    ret.push([center[0] + x, center[1] + y]);
+  }
+  ret.push(ret[0]);
+
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [ret]
+    },
+    properties: {}
+  };
+}
+
 async function renderStateHighlight(stateName, countryName, centerCoords) {
   if (!map) return;
 
-  // Clear any existing state highlight
-  if (stateGeoLayer) {
-    try { map.removeLayer(stateGeoLayer); } catch (e) { }
-    stateGeoLayer = null;
+  removeStateHighlight();
+
+  const isSmallRegion = stateName && (stateName.toLowerCase() === 'delhi' || stateName.toLowerCase().includes('delhi'));
+  const radiusKm = isSmallRegion ? 45 : 130;
+  const initialGeoJSON = createGeoJSONCircle(centerCoords, radiusKm);
+
+  try {
+    if (!map.getSource('state-highlight')) {
+      map.addSource('state-highlight', {
+        type: 'geojson',
+        data: initialGeoJSON
+      });
+
+      map.addLayer({
+        id: 'state-fill',
+        type: 'fill',
+        source: 'state-highlight',
+        paint: {
+          'fill-color': '#ffffff',
+          'fill-opacity': 0.20
+        }
+      });
+
+      map.addLayer({
+        id: 'state-line',
+        type: 'line',
+        source: 'state-highlight',
+        paint: {
+          'line-color': '#ffffff',
+          'line-width': 2.5,
+          'line-dasharray': [2, 2],
+          'line-opacity': 0.95
+        }
+      });
+    }
+  } catch (e) {
+    console.warn('MapLibre state highlight layer:', e);
   }
 
-  // 1. Instant glowing white geometric radar perimeter over the state
-  const isSmallRegion = stateName && (stateName.toLowerCase() === 'delhi' || stateName.toLowerCase().includes('delhi'));
-  const radiusMeters = isSmallRegion ? 45000 : 130000;
-
-  stateGeoLayer = L.circle(centerCoords, {
-    radius: radiusMeters,
-    color: '#ffffff',
-    weight: 2.5,
-    opacity: 0.95,
-    fillColor: '#ffffff',
-    fillOpacity: 0.20,
-    dashArray: '6, 6',
-    className: 'state-highlight-shape',
-  }).addTo(map);
-
-  // 2. Concurrently attempt to query exact polygon GeoJSON for the state
+  // Refine asynchronously with exact state polygon if available
   try {
     const q = encodeURIComponent(`${stateName}, ${countryName || ''}`);
     const res = await fetchWithTimeout(
@@ -448,80 +487,22 @@ async function renderStateHighlight(stateName, countryName, centerCoords) {
       data[0].geojson &&
       (data[0].geojson.type === 'Polygon' || data[0].geojson.type === 'MultiPolygon')
     ) {
-      if (currentPhase === PHASE.GROUND && stateGeoLayer && map) {
-        map.removeLayer(stateGeoLayer);
-        stateGeoLayer = L.geoJSON(data[0].geojson, {
-          style: {
-            color: '#ffffff',
-            weight: 2.8,
-            opacity: 0.95,
-            fillColor: '#ffffff',
-            fillOpacity: 0.22,
-            dashArray: '6, 6',
-            className: 'state-highlight-shape',
-          },
-        }).addTo(map);
+      if (currentPhase === PHASE.GROUND && map && map.getSource('state-highlight')) {
+        map.getSource('state-highlight').setData(data[0].geojson);
       }
     }
   } catch (e) {
-    // Instant geometric shape remains active
+    // Retain circle geometry
   }
 }
 
-/* ── 3D Camera Controls (Pitch & Banking) ───────────────────────── */
-function setCamera3D(pitch = 0, bank = 0, transitionMs = 150) {
-  const mapEl = $('map');
-  if (mapEl) {
-    mapEl.style.transition = `transform ${transitionMs}ms cubic-bezier(0.16, 1, 0.3, 1), filter 140ms ease`;
-    mapEl.style.setProperty('--cam-pitch', `${pitch}deg`);
-    mapEl.style.setProperty('--cam-bank', `${bank}deg`);
-    mapEl.style.transform = `rotateX(${pitch}deg) rotateZ(${bank}deg) scale(var(--cam-scale, 1.08))`;
-  }
-}
-
-/* ── Step-Zoom Motor (Kinetic GTA V Snaps & Supersonic Traverse) ──── */
-function stepZoom(targetCenter, targetZoom, durationSec = 0.14, easeLinearity = 0.96, isLanding = false) {
-  return new Promise(resolve => {
-    if (currentPhase === PHASE.SKIP) { resolve(); return; }
-
-    const mapEl = $('map');
-    if (mapEl) {
-      mapEl.classList.remove('camera-shake', 'camera-recoil');
-      void mapEl.offsetWidth; // force reflow for fresh animation
-      mapEl.classList.add(isLanding ? 'camera-recoil' : 'camera-shake');
-
-      setTimeout(() => {
-        if (mapEl) mapEl.classList.remove('camera-shake', 'camera-recoil');
-      }, isLanding ? 260 : 140);
-    }
-
-    // 1. If at same zoom level (Supersonic Orbital Traverse at Zoom 3): smooth lateral flight
-    if (map.getZoom() === targetZoom) {
-      let resolved = false;
-      const finish = () => {
-        if (!resolved) {
-          resolved = true;
-          map.off('moveend', onMoveEnd);
-          resolve();
-        }
-      };
-      const onMoveEnd = () => finish();
-
-      map.once('moveend', onMoveEnd);
-      map.flyTo(targetCenter, targetZoom, {
-        duration: durationSec,
-        easeLinearity: easeLinearity,
-        noMoveStart: true,
-      });
-
-      setTimeout(finish, Math.round(durationSec * 1000) + 80);
-    } else {
-      // 2. Discrete Altitude Cuts: Instant snap under the photoflash burst.
-      // Eliminates Leaflet fractional zoom lag & gives 60fps mechanical cuts.
-      map.setView(targetCenter, targetZoom, { animate: false });
-      setTimeout(resolve, Math.round(durationSec * 1000));
-    }
-  });
+function removeStateHighlight() {
+  if (!map) return;
+  try {
+    if (map.getLayer('state-fill')) map.removeLayer('state-fill');
+    if (map.getLayer('state-line')) map.removeLayer('state-line');
+    if (map.getSource('state-highlight')) map.removeSource('state-highlight');
+  } catch (e) {}
 }
 
 /* ── GTA V Web Audio Engine ─────────────────────────────────────── */
@@ -651,10 +632,6 @@ function playShutterClackSound(isFirst = false) {
   noise.start(now);
 }
 
-// Aliases for backwards compatibility
-function playFlashSound() { playShutterClackSound(true); }
-function playStepSnapSound() { playShutterClackSound(false); }
-
 /** 3. Atmospheric Cloud Wind: Continuous stereo rushing air */
 function startCloudWind() {
   if (!soundEnabled) return;
@@ -662,63 +639,59 @@ function startCloudWind() {
   if (!ctx || ctx.state !== 'running') return;
   if (windSource) return;
 
-  const dest = getAudioDestination(ctx);
-  const bufferSize = ctx.sampleRate * 2.5;
-  const buffer = ctx.createBuffer(2, bufferSize, ctx.sampleRate);
-  for (let ch = 0; ch < 2; ch++) {
-    const data = buffer.getChannelData(ch);
-    let lastOut = 0.0;
-    for (let i = 0; i < bufferSize; i++) {
-      const white = Math.random() * 2 - 1;
-      data[i] = (lastOut + (0.02 * white)) / 1.02;
-      lastOut = data[i];
-      data[i] *= 3.5;
-    }
+  const bufferSize = ctx.sampleRate * 2.0;
+  const noiseBuffer = ctx.createBuffer(2, bufferSize, ctx.sampleRate);
+  const left = noiseBuffer.getChannelData(0);
+  const right = noiseBuffer.getChannelData(1);
+
+  let b0L = 0, b1L = 0, b2L = 0;
+  let b0R = 0, b1R = 0, b2R = 0;
+  for (let i = 0; i < bufferSize; i++) {
+    const whiteL = Math.random() * 2 - 1;
+    const whiteR = Math.random() * 2 - 1;
+    b0L = 0.99886 * b0L + whiteL * 0.0555179;
+    b1L = 0.99332 * b1L + whiteL * 0.0750759;
+    b2L = 0.96900 * b2L + whiteL * 0.1538520;
+    left[i] = (b0L + b1L + b2L) * 0.35;
+
+    b0R = 0.99886 * b0R + whiteR * 0.0555179;
+    b1R = 0.99332 * b1R + whiteR * 0.0750759;
+    b2R = 0.96900 * b2R + whiteR * 0.1538520;
+    right[i] = (b0R + b1R + b2R) * 0.35;
   }
 
   windSource = ctx.createBufferSource();
-  windSource.buffer = buffer;
+  windSource.buffer = noiseBuffer;
   windSource.loop = true;
 
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'bandpass';
-  filter.frequency.setValueAtTime(450, ctx.currentTime);
-  filter.Q.value = 1.4;
-
-  const lfo = ctx.createOscillator();
-  const lfoGain = ctx.createGain();
-  lfo.frequency.value = 0.6;
-  lfoGain.gain.value = 180;
-  lfo.connect(filter.frequency);
-  lfo.start();
+  const lowpass = ctx.createBiquadFilter();
+  lowpass.type = 'lowpass';
+  lowpass.frequency.setValueAtTime(580, ctx.currentTime);
 
   windGain = ctx.createGain();
   windGain.gain.setValueAtTime(0.001, ctx.currentTime);
-  windGain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.4);
+  windGain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.35);
 
-  windSource.connect(filter);
-  filter.connect(windGain);
-  windGain.connect(dest);
-  windSource.start();
+  windSource.connect(lowpass);
+  lowpass.connect(windGain);
+  windGain.connect(getAudioDestination(ctx));
+  windSource.start(0);
 }
 
 function stopCloudWind() {
-  if (windGain && audioCtx) {
-    const now = audioCtx.currentTime;
-    windGain.gain.setValueAtTime(windGain.gain.value, now);
-    windGain.gain.linearRampToValueAtTime(0.001, now + 0.3);
+  if (!windGain || !audioCtx) return;
+  try {
+    windGain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
     setTimeout(() => {
       if (windSource) {
         try { windSource.stop(); } catch (e) { }
-        windSource.disconnect();
         windSource = null;
       }
-      windGain = null;
     }, 320);
-  }
+  } catch (e) { }
 }
 
-/** 4. Cloud-Piercing Flash: Electric beam surge + atmospheric thunder */
+/** 4. Target Acquisition Pierce: High tech radar ping + supersonic punch */
 function playCloudPierceSound() {
   if (!soundEnabled) return;
   const ctx = getAudioContext();
@@ -726,38 +699,32 @@ function playCloudPierceSound() {
   const dest = getAudioDestination(ctx);
   const now = ctx.currentTime;
 
-  const osc = ctx.createOscillator();
-  const oscGain = ctx.createGain();
-  osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(220, now);
-  osc.frequency.exponentialRampToValueAtTime(1450, now + 0.18);
-  oscGain.gain.setValueAtTime(0.22, now);
-  oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+  const tone = ctx.createOscillator();
+  const toneGain = ctx.createGain();
+  tone.type = 'sine';
+  tone.frequency.setValueAtTime(1420, now);
+  tone.frequency.exponentialRampToValueAtTime(320, now + 0.36);
+  toneGain.gain.setValueAtTime(0.35, now);
+  toneGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+  tone.connect(toneGain);
+  toneGain.connect(dest);
+  tone.start(now);
+  tone.stop(now + 0.40);
 
-  const lowpass = ctx.createBiquadFilter();
-  lowpass.type = 'lowpass';
-  lowpass.frequency.value = 2500;
-
-  osc.connect(lowpass);
-  lowpass.connect(oscGain);
-  oscGain.connect(dest);
-  osc.start(now);
-  osc.stop(now + 0.24);
-
-  const boom = ctx.createOscillator();
-  const boomGain = ctx.createGain();
-  boom.type = 'sine';
-  boom.frequency.setValueAtTime(80, now + 0.05);
-  boom.frequency.exponentialRampToValueAtTime(22, now + 0.55);
-  boomGain.gain.setValueAtTime(0.65, now + 0.05);
-  boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-  boom.connect(boomGain);
-  boomGain.connect(dest);
-  boom.start(now + 0.05);
-  boom.stop(now + 0.65);
+  const sub = ctx.createOscillator();
+  const subGain = ctx.createGain();
+  sub.type = 'triangle';
+  sub.frequency.setValueAtTime(95, now);
+  sub.frequency.exponentialRampToValueAtTime(35, now + 0.32);
+  subGain.gain.setValueAtTime(0.48, now);
+  subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+  sub.connect(subGain);
+  subGain.connect(dest);
+  sub.start(now);
+  sub.stop(now + 0.36);
 }
 
-/** 5. Landing Impact: Heavy sub-bass thud + GTA target-lock double electronic beep */
+/** 5. Ground Impact Shockwave: Heavy seismic rumble */
 function playLandingSound() {
   if (!soundEnabled) return;
   const ctx = getAudioContext();
@@ -765,36 +732,32 @@ function playLandingSound() {
   const dest = getAudioDestination(ctx);
   const now = ctx.currentTime;
 
-  const osc = ctx.createOscillator();
-  const oscGain = ctx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(105, now);
-  osc.frequency.exponentialRampToValueAtTime(24, now + 0.45);
-  oscGain.gain.setValueAtTime(0.8, now);
-  oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-  osc.connect(oscGain);
-  oscGain.connect(dest);
-  osc.start(now);
-  osc.stop(now + 0.5);
+  const sub = ctx.createOscillator();
+  const subGain = ctx.createGain();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(120, now);
+  sub.frequency.exponentialRampToValueAtTime(24, now + 0.48);
+  subGain.gain.setValueAtTime(0.95, now);
+  subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.52);
+  sub.connect(subGain);
+  subGain.connect(dest);
+  sub.start(now);
+  sub.stop(now + 0.55);
 
-  const playBeep = (freq, startTime, dur) => {
-    const beep = ctx.createOscillator();
-    const bGain = ctx.createGain();
-    beep.type = 'sine';
-    beep.frequency.value = freq;
-    bGain.gain.setValueAtTime(0.35, startTime);
-    bGain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
-    beep.connect(bGain);
-    bGain.connect(dest);
-    beep.start(startTime);
-    beep.stop(startTime + dur + 0.01);
-  };
-
-  playBeep(1200, now + 0.28, 0.04);
-  playBeep(1600, now + 0.35, 0.06);
+  const snap = ctx.createOscillator();
+  const snapGain = ctx.createGain();
+  snap.type = 'triangle';
+  snap.frequency.setValueAtTime(480, now);
+  snap.frequency.exponentialRampToValueAtTime(65, now + 0.08);
+  snapGain.gain.setValueAtTime(0.65, now);
+  snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+  snap.connect(snapGain);
+  snapGain.connect(dest);
+  snap.start(now);
+  snap.stop(now + 0.10);
 }
 
-/** 6. Mechanical Window Dock: Subtle hydraulic servo slide + crisp latch click */
+/** 6. Mechanical Panel Dock Sound */
 function playMechanicalDockSound() {
   if (!soundEnabled) return;
   const ctx = getAudioContext();
@@ -802,7 +765,6 @@ function playMechanicalDockSound() {
   const dest = getAudioDestination(ctx);
   const now = ctx.currentTime;
 
-  // Crisp mechanical latch release
   const click = ctx.createOscillator();
   const clickGain = ctx.createGain();
   click.type = 'triangle';
@@ -815,7 +777,6 @@ function playMechanicalDockSound() {
   click.start(now);
   click.stop(now + 0.045);
 
-  // Soft pneumatic servo slide hum
   const hum = ctx.createOscillator();
   const humGain = ctx.createGain();
   hum.type = 'sine';
@@ -831,167 +792,232 @@ function playMechanicalDockSound() {
 
 /* ════════════════════════════════════════════════════════════════
    THE GTA V CHARACTER SWITCH SEQUENCE
+   Flat overhead perspective: 3 out-steps → 3 waypoint hard cuts → 3 in-steps
+   Total runtime ≈ 6.5–7s
    ════════════════════════════════════════════════════════════════ */
 async function runGTASequence() {
   if (currentPhase === PHASE.SKIP) return;
 
-  // 1. Initial State: Stay over user's actual state highlighted in white (0° pitch, 0° bank)
+  /* ──────────────────────────────────────────────────────────────
+     GROUND (start)
+     Zoom: 12.5 | Pitch: 0° | Duration: hold 1500ms
+     State highlight visible, crosshair reticle active, camera breathing.
+  ────────────────────────────────────────────────────────────── */
   currentPhase = PHASE.GROUND;
-  setCamera3D(0, 0, 0);
-  map.setView(visitorCoords, 7, { animate: false });
   applyGrade('GROUND');
   showCrosshair();
+  hideClouds();
 
-  // Highlight the state in white on the map
   renderStateHighlight(visitorState, visitorCountry, visitorCoords);
 
-  // Stay over the user's actual state briefly so it reads clearly, with a faint idle
-  // drift so the hold doesn't look like a frozen screenshot.
+  // Discrete waypoints across the flat map (Los Santos → Jaipur)
+  const WP1 = [
+    visitorCoords[0] + 0.25 * (JAIPUR[0] - visitorCoords[0]),
+    visitorCoords[1] + 0.25 * (JAIPUR[1] - visitorCoords[1])
+  ]; // ~25% along path (Western Atlantic / US East)
+  const WP2 = [
+    visitorCoords[0] + 0.55 * (JAIPUR[0] - visitorCoords[0]),
+    visitorCoords[1] + 0.55 * (JAIPUR[1] - visitorCoords[1])
+  ]; // ~55% along path (Eastern Atlantic / North Africa)
+  const WP3 = [62.0, 27.2]; // ~85% along path (over Jaipur approach region)
+
+  // Warm up destination and waypoint tiles during ground hold
+  prefetchSequenceTiles(visitorCoords, JAIPUR, [WP1, WP2, WP3]);
+
   addBreathing();
   await sleep(1500);
   removeBreathing();
   if (currentPhase === PHASE.SKIP) return;
 
-  // 2. Multi-Step Discrete Zoom-Out (4 discrete steps with 0.2s gaps)
-
-  // Step 1: State -> Region (7 -> 6) - Pitch begins (10°)
-  currentPhase = PHASE.OUT_STEP_1;
-  setCamera3D(10, 0, 140);
-  triggerFlash('burst');
+  /* ──────────────────────────────────────────────────────────────
+     OUT_1
+     Zoom: 12.5 → 8.0 | Duration: 180ms | Hold after: 150ms | Pitch: 0°
+     shutter-click + tiny shake pop
+  ────────────────────────────────────────────────────────────── */
+  currentPhase = PHASE.OUT_1;
+  removeStateHighlight();
+  triggerFlash();
   playShutterClackSound(true);
+  triggerCameraPop();
   applyGrade('OUT_1');
-  await stepZoom(visitorCoords, 6, 0.14, 0.96);
-  await sleep(200); // 0.2s gap between steps
+
+  await easeCamera({
+    center: visitorCoords,
+    zoom: 8.0,
+    duration: 180
+  });
+  if (currentPhase === PHASE.SKIP) return;
+  await sleep(150);
   if (currentPhase === PHASE.SKIP) return;
 
-  // Step 2: Region -> Subcontinent Overview (6 -> 5) - Pitch increases (20°), subtle bank (-3°)
-  currentPhase = PHASE.OUT_STEP_2;
-  setCamera3D(20, -3, 140);
-  triggerFlash('burst');
+  /* ──────────────────────────────────────────────────────────────
+     OUT_2
+     Zoom: 8.0 → 4.5 | Duration: 180ms | Hold after: 150ms | Pitch: 0°
+     shutter-click + tiny shake pop
+  ────────────────────────────────────────────────────────────── */
+  currentPhase = PHASE.OUT_2;
+  triggerFlash();
   playShutterClackSound(false);
+  triggerCameraPop();
   applyGrade('OUT_2');
-  await stepZoom(visitorCoords, 5, 0.14, 0.96);
-  await sleep(200); // 0.2s gap
+
+  await easeCamera({
+    center: visitorCoords,
+    zoom: 4.5,
+    duration: 180
+  });
+  if (currentPhase === PHASE.SKIP) return;
+  await sleep(150);
   if (currentPhase === PHASE.SKIP) return;
 
-  // Step 3: Subcontinent -> Continental & Cloud Entry (5 -> 4) - Pitch reaches 28°, clouds active
-  currentPhase = PHASE.OUT_STEP_3;
-  setCamera3D(28, -6, 150);
-  triggerFlash('burst');
+  /* ──────────────────────────────────────────────────────────────
+     OUT_3
+     Zoom: 4.5 → 3.0 (strictly z3, never below) | Duration: 200ms
+     Hold after: 250ms | Pitch: 0°
+     shutter-click + tiny shake pop
+  ────────────────────────────────────────────────────────────── */
+  currentPhase = PHASE.OUT_3;
+  triggerFlash();
   playShutterClackSound(false);
-  setClouds('active'); // clouds start drifting in
+  triggerCameraPop();
   applyGrade('OUT_3');
-  await stepZoom(visitorCoords, 4, 0.15, 0.96);
-  await sleep(200); // 0.2s gap
+
+  await easeCamera({
+    center: visitorCoords,
+    zoom: 3.0,
+    duration: 200
+  });
+  if (currentPhase === PHASE.SKIP) return;
+  await sleep(250);
   if (currentPhase === PHASE.SKIP) return;
 
-  // Step 4: Continental -> High Orbit / Max Altitude (4 -> 3) - Full 30° perspective pitch
-  currentPhase = PHASE.ORBIT;
-  setCamera3D(30, -7, 150);
-  triggerFlash('burst');
+  /* ──────────────────────────────────────────────────────────────
+     PAN waypoint 1 (~25% along path)
+     Hold at 3.0 | hard cut, no interpolation | 350ms | Pitch: 0°
+     grade: cool green | clouds visible during 350ms hold
+  ────────────────────────────────────────────────────────────── */
+  currentPhase = PHASE.PAN_1;
+  jumpCamera(WP1, 3.0);
+  triggerFlash();
   playShutterClackSound(false);
-  applyGrade('ORBIT');
+  triggerCameraPop();
+  applyGrade('PAN_1');
+  showPostcardClouds();
 
-  // Fade (don't pop) the state highlight once reaching orbit
-  if (stateGeoLayer && map) {
-    const layerToRemove = stateGeoLayer;
-    try {
-      const el = layerToRemove._path || (layerToRemove.getElement && layerToRemove.getElement());
-      if (el) {
-        el.classList.add('fading-out');
-        setTimeout(() => { try { map.removeLayer(layerToRemove); } catch (e) { } }, 260);
-      } else {
-        map.removeLayer(layerToRemove);
-      }
-    } catch (e) { }
-    stateGeoLayer = null;
-  }
-
-  await stepZoom(visitorCoords, 3, 0.16, 0.96);
-  await sleep(200); // 0.2s gap before supersonic whip
+  await sleep(350);
+  hideClouds();
   if (currentPhase === PHASE.SKIP) return;
 
-  // 3. Supersonic Orbital Whip across the terrain (Fast, aggressive tear across the globe)
-  currentPhase = PHASE.TRAVERSE;
-  setClouds('traveling');
-  startCloudWind();
-  triggerSpeedStreaks(); // radial motion-blur burst — the "we just crossed the map" beat
-
-  // Dynamic 3D banking into supersonic lateral flight
-  const dLng = JAIPUR[1] - visitorCoords[1];
-  const bankAngle = dLng >= 0 ? -16 : 16;
-  setCamera3D(30, bankAngle, 450);
-
-  await stepZoom(JAIPUR, 3, 0.48, 0.88);
-  if (currentPhase === PHASE.SKIP) { stopCloudWind(); return; }
-
-  // Level banking out as camera reaches destination orbit
-  setCamera3D(30, 0, 250);
-
-  // 4. Destination Max Zoomout Hover: 1.0 second hover above Jaipur over clouds
-  addBreathing();
-  await sleep(1000);
-  removeBreathing();
-  if (currentPhase === PHASE.SKIP) { stopCloudWind(); return; }
-
-  // Clouds part & atmospheric wind dissolves before descent
-  stopCloudWind();
-  setClouds('part');
-  playCloudPierceSound();
-
-  // 5. Multi-Step Discrete Zoom-In (Descending into Jaipur with 0.2s gaps - pitch levels back down!)
-
-  // Step 1: Cloud Break -> Rajasthan Subcontinent (3 -> 6) - Pitch levels to 22°
-  currentPhase = PHASE.IN_STEP_1;
-  setCamera3D(22, 0, 140);
-  triggerFlash('burst');
+  /* ──────────────────────────────────────────────────────────────
+     PAN waypoint 2 (~55% along path)
+     Hold at 3.0 | hard cut | 350ms | Pitch: 0°
+     grade: neutral grey-blue | clouds visible during 350ms hold
+  ────────────────────────────────────────────────────────────── */
+  currentPhase = PHASE.PAN_2;
+  jumpCamera(WP2, 3.0);
+  triggerFlash();
   playShutterClackSound(false);
+  triggerCameraPop();
+  applyGrade('PAN_2');
+  showPostcardClouds();
+
+  await sleep(350);
+  hideClouds();
+  if (currentPhase === PHASE.SKIP) return;
+
+  /* ──────────────────────────────────────────────────────────────
+     PAN waypoint 3 (~85%, over Jaipur region)
+     Hold at 3.0 | hard cut | 350ms | Pitch: 0°
+     grade: warm amber begins | clouds visible during 350ms hold
+  ────────────────────────────────────────────────────────────── */
+  currentPhase = PHASE.PAN_3;
+  jumpCamera(WP3, 3.0);
+  triggerFlash();
+  playShutterClackSound(false);
+  triggerCameraPop();
+  applyGrade('PAN_3');
+  showPostcardClouds();
+
+  await sleep(350);
+  hideClouds();
+  if (currentPhase === PHASE.SKIP) return;
+
+  /* ──────────────────────────────────────────────────────────────
+     IN_1
+     Zoom: 3.0 → 7.0 | Duration: 180ms | Hold after: 150ms | Pitch: 0°
+     shutter-click + tiny shake pop
+  ────────────────────────────────────────────────────────────── */
+  currentPhase = PHASE.IN_1;
+  triggerFlash();
+  playShutterClackSound(false);
+  triggerCameraPop();
   applyGrade('IN_1');
-  await stepZoom(JAIPUR, 6, 0.14, 0.96);
-  await sleep(200); // 0.2s gap
+
+  await easeCamera({
+    center: JAIPUR,
+    zoom: 7.0,
+    duration: 180
+  });
+  if (currentPhase === PHASE.SKIP) return;
+  await sleep(150);
   if (currentPhase === PHASE.SKIP) return;
 
-  // Step 2: Rajasthan -> Jaipur Metro (6 -> 9) - Pitch levels to 14°
-  currentPhase = PHASE.IN_STEP_2;
-  setCamera3D(14, 0, 140);
-  triggerFlash('burst');
+  /* ──────────────────────────────────────────────────────────────
+     IN_2
+     Zoom: 7.0 → 11.0 | Duration: 180ms | Hold after: 150ms | Pitch: 0°
+     shutter-click + tiny shake pop
+  ────────────────────────────────────────────────────────────── */
+  currentPhase = PHASE.IN_2;
+  triggerFlash();
   playShutterClackSound(false);
+  triggerCameraPop();
   applyGrade('IN_2');
-  await stepZoom(JAIPUR, 9, 0.14, 0.96);
-  await sleep(200); // 0.2s gap
+
+  await easeCamera({
+    center: JAIPUR,
+    zoom: 11.0,
+    duration: 180
+  });
+  if (currentPhase === PHASE.SKIP) return;
+  await sleep(150);
   if (currentPhase === PHASE.SKIP) return;
 
-  // Step 3: Jaipur Metro -> Urban District Grid (9 -> 12) - Pitch levels to 6°
-  currentPhase = PHASE.IN_STEP_3;
-  setCamera3D(6, 0, 140);
-  triggerFlash('burst');
-  playShutterClackSound(false);
-  applyGrade('IN_3');
-  await stepZoom(JAIPUR, 12, 0.15, 0.96);
-  await sleep(200); // 0.2s gap
+  /* ──────────────────────────────────────────────────────────────
+     IN_3 (landing)
+     Zoom: 11.0 → 15.0 | Duration: 220ms | Hold after: 300ms | Pitch: 0°
+     landing flash + thud sound, then dock
+  ────────────────────────────────────────────────────────────── */
+  currentPhase = PHASE.IN_3;
+  await easeCamera({
+    center: JAIPUR,
+    zoom: 15.0,
+    duration: 220
+  });
   if (currentPhase === PHASE.SKIP) return;
 
-  // Step 4: Final Street Punch-In & Recoil (12 -> 15) - Pitch levels to 0° (ground view!)
+  // Touchdown impact!
   currentPhase = PHASE.LANDING;
-  setCamera3D(0, 0, 200);
-  triggerFlash('burst');
+  triggerFlash();
   playLandingSound();
   applyGrade('LANDING');
-  await stepZoom(JAIPUR, 15, 0.22, 0.96, true); // true triggers camera landing recoil!
+
+  const mapEl = $('map');
+  if (mapEl) {
+    mapEl.classList.remove('camera-recoil-landing', 'camera-shake', 'camera-shake-pop');
+    void mapEl.offsetWidth;
+    mapEl.classList.add('camera-recoil-landing');
+    setTimeout(() => mapEl && mapEl.classList.remove('camera-recoil-landing'), 370);
+  }
+
   lockCrosshair();
   addJaipurMarker();
+
+  await sleep(300);
   if (currentPhase === PHASE.SKIP) return;
 
-  // 6. Ground Arrival Settle & Mechanical Hold
-  // Stay stationary on the target street view for a deliberate beat so the arrival registers
-  const hudStatus = $('hud-status');
-  if (hudStatus) hudStatus.textContent = 'SIGNAL LOCKED';
-  const hudRegion = $('hud-region');
-  if (hudRegion) hudRegion.textContent = 'JAIPUR, RJ';
-
-  await sleep(950);
+  // Dock Transition
   hideCrosshair();
-  await sleep(250); // micro-pause right before mechanical resize begins
+  await sleep(150);
   if (currentPhase !== PHASE.SKIP) await runDock();
 }
 
@@ -1021,41 +1047,49 @@ async function runDock() {
     card.classList.add('pin-visible');
   }
 
-  // Invalidate map size after window slide completes so tile layout stays crisp
+  // Resize MapLibre canvas after slide completes
   setTimeout(() => {
     if (map) {
-      try { map.invalidateSize({ pan: false }); } catch (e) { }
+      try { map.resize(); } catch (e) { }
     }
-  }, 1150);
+  }, 750);
 }
 
 /* ── Skip Intro ─────────────────────────────────────────────────── */
 function skipIntro() {
-  if (currentPhase === PHASE.SKIP) return;
+  if (currentPhase === PHASE.SKIP || currentPhase === PHASE.DOCK) return;
   currentPhase = PHASE.SKIP;
 
-  if (stateGeoLayer && map) {
-    try { map.removeLayer(stateGeoLayer); } catch (e) { }
-    stateGeoLayer = null;
-  }
-
-  setCamera3D(0, 0, 0);
+  removeStateHighlight();
   removeBreathing();
+
+  const flash = $('white-flash');
+  if (flash) flash.className = '';
+
+  const clouds = $('cloud-container');
+  if (clouds) clouds.style.display = 'none';
+
+  stopCloudWind();
+  hideCrosshair();
 
   if (map) {
     map.stop();
-    requestAnimationFrame(() => map.setView(JAIPUR, 15, { animate: false }));
+    map.jumpTo({
+      center: JAIPUR,
+      zoom: 15.0,
+      pitch: 0,
+      bearing: 0
+    });
+    addJaipurMarker();
   }
 
   applyGrade('LANDING');
-  hideCrosshair();
-  setClouds('none');
-  stopCloudWind();
-  addJaipurMarker();
 
   const card = $('pin-card');
-  card.classList.remove('pin-hidden');
-  requestAnimationFrame(() => card.classList.add('pin-visible'));
+  if (card) {
+    card.classList.remove('pin-hidden');
+    requestAnimationFrame(() => card.classList.add('pin-visible'));
+  }
 
   const panel = $('form-panel');
   panel.inert = false;
@@ -1070,24 +1104,31 @@ function skipIntro() {
 function showFinalState() {
   currentPhase = PHASE.SKIP;
 
-  if (stateGeoLayer && map) {
-    try { map.removeLayer(stateGeoLayer); } catch (e) { }
-    stateGeoLayer = null;
-  }
+  removeStateHighlight();
+  removeBreathing();
 
   const app = $('app');
   app.classList.add('no-anim');
 
-  setCamera3D(0, 0, 0);
-  removeBreathing();
   applyGrade('LANDING');
   hideCrosshair();
   setClouds('none');
-  addJaipurMarker();
+
+  if (map) {
+    map.jumpTo({
+      center: JAIPUR,
+      zoom: 15.0,
+      pitch: 0,
+      bearing: 0
+    });
+    addJaipurMarker();
+  }
 
   const card = $('pin-card');
-  card.classList.remove('pin-hidden');
-  card.classList.add('pin-visible');
+  if (card) {
+    card.classList.remove('pin-hidden');
+    card.classList.add('pin-visible');
+  }
 
   const panel = $('form-panel');
   panel.inert = false;
@@ -1100,7 +1141,7 @@ function showFinalState() {
   }));
 }
 
-/* ── Sound Toggle (explicit opt-in — nothing plays until this is clicked) ── */
+/* ── Sound Toggle ───────────────────────────────────────────────── */
 function initSoundToggle() {
   const btn = $('sound-toggle');
   if (!btn) return;
@@ -1200,14 +1241,7 @@ async function main() {
 
   isMobile = window.matchMedia('(max-width: 768px)').matches;
 
-  // ── Fast path: skip straight to final state ONLY if explicitly requested via ?skip or ?static ──
-  if (forceSkip) {
-    initMap(JAIPUR, 15);
-    showFinalState();
-    return;
-  }
-
-  // ── Reset any docked classes to guarantee starting in fullscreen cinematic mode ──
+  // Reset docked classes
   $('form-panel').classList.remove('docked');
   $('cinematic').classList.remove('docked');
   const pinCard = $('pin-card');
@@ -1216,24 +1250,21 @@ async function main() {
     pinCard.classList.add('pin-hidden');
   }
 
-  // ── Canonical Offline Route: Los Santos (California) → Jaipur ───────
-  visitorCoords = [34.0522, -118.2437]; // Los Santos / Los Angeles
+  // ── Canonical Route: Los Santos (California) → Jaipur ──────────────
+  visitorCoords = [-118.2437, 34.0522]; // Los Santos [lng, lat]
   visitorState = 'California';
   visitorCountry = 'United States';
   visitorCity = 'Los Santos';
 
-  initMap(visitorCoords, 7);
+  if (forceSkip) {
+    await initMap(JAIPUR, 15.0, 0, 0);
+    showFinalState();
+    return;
+  }
+
+  // Start at street-level zoom 12.5 — the overhead camera
+  await initMap(visitorCoords, 12.5, 0, 0);
   applyGrade('GROUND');
-
-  // Trigger background preloader across all transition phases
-  preloadGTAMap(visitorCoords);
-
-  // Pre-flight check: ensure starting viewport state tiles are loaded before revealing
-  const startTiles = getTileUrlsForLocation(visitorCoords[0], visitorCoords[1], 7, 2);
-  await Promise.race([
-    Promise.all(startTiles.slice(0, 9).map(preloadTile)),
-    sleep(350),
-  ]);
 
   await runGTASequence();
 }
