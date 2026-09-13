@@ -15,6 +15,7 @@
   --fg:       rgba(255, 255, 255, 0.94);
   --fg-dim:   rgba(255, 255, 255, 0.40);
   --border:   rgba(255, 255, 255, 0.14);
+  --dock-duration: 2200ms;
 }
 
 /* ── Reset ─────────────────────────────────────────────────────── */
@@ -58,8 +59,8 @@ button { cursor: pointer; font-family: inherit; }
   opacity: 0;
   transform: translateX(-32px);
   transition:
-    opacity 800ms cubic-bezier(0.22, 1, 0.36, 1) 300ms,
-    transform 850ms cubic-bezier(0.22, 1, 0.36, 1) 300ms;
+    opacity calc(var(--dock-duration, 2200ms) * 0.72) cubic-bezier(0.22, 1, 0.36, 1) calc(var(--dock-duration, 2200ms) * 0.18),
+    transform calc(var(--dock-duration, 2200ms) * 0.72) cubic-bezier(0.22, 1, 0.36, 1) calc(var(--dock-duration, 2200ms) * 0.18);
 }
 
 #form-panel.docked #form-inner {
@@ -320,11 +321,12 @@ button { cursor: pointer; font-family: inherit; }
   height: 100vh;
   overflow: hidden;
   z-index: 10;
+  background-color: #0c151b;
   will-change: transform, box-shadow;
   transform: translateX(0);
   transition:
-    transform 1100ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 1100ms cubic-bezier(0.22, 1, 0.36, 1);
+    transform var(--dock-duration, 2200ms) cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow var(--dock-duration, 2200ms) cubic-bezier(0.22, 1, 0.36, 1);
   perspective: 750px;
   perspective-origin: 50% 50%;
   border-left: 1px solid transparent;
@@ -348,9 +350,10 @@ button { cursor: pointer; font-family: inherit; }
   inset: 0;
   width: 100%;
   height: 100%;
+  background-color: #0c151b;
   transform: translateX(0);
   will-change: transform;
-  transition: transform 1100ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform var(--dock-duration, 2200ms) cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 #cinematic.docked #map-frame {
@@ -395,83 +398,33 @@ button { cursor: pointer; font-family: inherit; }
   display: none !important;
 }
 
-/* Custom MapLibre Jaipur Radar Target Marker */
-.jaipur-marker-element {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.jaipur-marker-element .marker-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.95);
-  box-shadow: 0 0 16px rgba(255, 255, 255, 0.85);
-  animation: radar-marker-pulse 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
-}
-
+/* Custom MapLibre Jaipur Radar Target Marker (Removed beating crosshair / marker) */
+.jaipur-marker-element,
+.jaipur-marker-element .marker-ring,
 .jaipur-marker-element .marker-dot {
-  width: 8px;
-  height: 8px;
-  background: #ffffff;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #ffffff;
+  display: none !important;
 }
 
-@keyframes radar-marker-pulse {
-  0% {
-    transform: scale(0.6);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(2.4);
-    opacity: 0;
-  }
+/* ── Continuous Directional Motion Blur During Active Zoom Travel ── */
+#map.camera-motion-blur {
+  will-change: transform, filter;
+  transition: filter 35ms linear, transform 35ms linear;
 }
 
-/* ── GTA V Directional Kinetic Recoil Snaps ── */
-#map.camera-shake,
-#map.camera-shake-pop,
-#map.camera-recoil-out {
-  animation: gta-shake-pop 130ms cubic-bezier(0.1, 0.9, 0.2, 1);
+#map.camera-motion-blur.blur-zoom-out {
+  transform: scale(0.975);
+  filter: var(--grade-filter, none) blur(6px) contrast(1.20) brightness(1.04) !important;
 }
 
-#map.camera-recoil-in {
-  animation: gta-recoil-in 130ms cubic-bezier(0.1, 0.9, 0.2, 1);
+#map.camera-motion-blur.blur-zoom-in {
+  transform: scale(1.035);
+  filter: var(--grade-filter, none) blur(6px) contrast(1.20) brightness(1.04) !important;
 }
 
+/* ── Landing Touchdown Impact (View 7 Final Street Level) ── */
 #map.camera-recoil,
 #map.camera-recoil-landing {
   animation: gta-landing-impact 360ms cubic-bezier(0.15, 0.85, 0.35, 1);
-}
-
-@keyframes gta-shake-pop {
-  0%   { transform: scale(1) translate(0, 0); }
-  25%  { transform: scale(0.985) translate(-3px, 3px); }
-  55%  { transform: scale(1.008) translate(2px, -2px); }
-  80%  { transform: scale(0.998) translate(-1px, 1px); }
-  100% { transform: scale(1) translate(0, 0); }
-}
-
-@keyframes gta-recoil-out {
-  0%   { transform: scale(1) translate(0, 0); }
-  25%  { transform: scale(0.96) translate(-5px, 6px); }
-  55%  { transform: scale(1.015) translate(4px, -3px); }
-  80%  { transform: scale(0.998) translate(-1px, 1px); }
-  100% { transform: scale(1) translate(0, 0); }
-}
-
-@keyframes gta-recoil-in {
-  0%   { transform: scale(1) translate(0, 0); }
-  25%  { transform: scale(1.04) translate(5px, -6px); }
-  55%  { transform: scale(0.985) translate(-3px, 3px); }
-  80%  { transform: scale(1.005) translate(1px, -1px); }
-  100% { transform: scale(1) translate(0, 0); }
 }
 
 @keyframes gta-landing-impact {
@@ -518,7 +471,7 @@ button { cursor: pointer; font-family: inherit; }
   transition: background 350ms ease;
 }
 
-/* ── GTA V Subtle Volumetric Clouds (Postcard Accent Layer) ─────── */
+/* ── GTA V Volumetric Clouds (Hidden Cut Beat) ─────── */
 #cloud-container {
   position: absolute;
   inset: 0;
@@ -526,7 +479,7 @@ button { cursor: pointer; font-family: inherit; }
   z-index: 415;
   overflow: hidden;
   opacity: 0;
-  transition: opacity 140ms ease;
+  transition: opacity 200ms ease;
 }
 
 .cloud-layer {
@@ -538,37 +491,44 @@ button { cursor: pointer; font-family: inherit; }
 
 #cloud-layer-back {
   background:
-    radial-gradient(ellipse 60% 45% at 20% 30%, rgba(255, 255, 255, 0.40) 0%, rgba(210, 230, 255, 0.20) 45%, transparent 75%),
-    radial-gradient(ellipse 70% 55% at 75% 65%, rgba(255, 255, 255, 0.42) 0%, rgba(200, 225, 255, 0.18) 50%, transparent 75%),
-    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(255, 255, 255, 0.35) 0%, rgba(195, 220, 255, 0.15) 55%, transparent 80%),
-    radial-gradient(circle at 85% 20%, rgba(255, 255, 255, 0.38) 0%, transparent 50%);
-  filter: blur(24px);
-  opacity: 0.35;
+    radial-gradient(ellipse 60% 45% at 20% 30%, rgba(255, 255, 255, 0.92) 0%, rgba(210, 230, 255, 0.55) 45%, transparent 75%),
+    radial-gradient(ellipse 70% 55% at 75% 65%, rgba(255, 255, 255, 0.94) 0%, rgba(200, 225, 255, 0.50) 50%, transparent 75%),
+    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(255, 255, 255, 0.88) 0%, rgba(195, 220, 255, 0.45) 55%, transparent 80%),
+    radial-gradient(circle at 85% 20%, rgba(255, 255, 255, 0.90) 0%, transparent 50%);
+  filter: blur(28px);
+  opacity: 0.90;
 }
 
 #cloud-layer-mid {
   background:
-    radial-gradient(ellipse 65% 55% at 35% 45%, rgba(255, 255, 255, 0.45) 0%, rgba(225, 240, 255, 0.22) 45%, transparent 70%),
-    radial-gradient(ellipse 55% 45% at 70% 25%, rgba(255, 255, 255, 0.40) 0%, rgba(215, 235, 255, 0.20) 50%, transparent 75%),
-    radial-gradient(ellipse 50% 50% at 15% 75%, rgba(255, 255, 255, 0.42) 0%, rgba(210, 230, 255, 0.18) 45%, transparent 70%);
-  filter: blur(36px);
-  opacity: 0.40;
+    radial-gradient(ellipse 65% 55% at 35% 45%, rgba(255, 255, 255, 0.98) 0%, rgba(225, 240, 255, 0.60) 45%, transparent 70%),
+    radial-gradient(ellipse 55% 45% at 70% 25%, rgba(255, 255, 255, 0.94) 0%, rgba(215, 235, 255, 0.55) 50%, transparent 75%),
+    radial-gradient(ellipse 50% 50% at 15% 75%, rgba(255, 255, 255, 0.96) 0%, rgba(210, 230, 255, 0.50) 45%, transparent 70%);
+  filter: blur(40px);
+  opacity: 0.94;
 }
 
 #cloud-layer-front {
   background:
-    radial-gradient(circle at 40% 60%, rgba(255, 255, 255, 0.35) 0%, rgba(240, 248, 255, 0.14) 40%, transparent 70%),
-    radial-gradient(circle at 80% 40%, rgba(255, 255, 255, 0.38) 0%, rgba(230, 245, 255, 0.15) 45%, transparent 70%);
-  filter: blur(52px);
-  opacity: 0.35;
+    radial-gradient(circle at 40% 60%, rgba(255, 255, 255, 0.90) 0%, rgba(240, 248, 255, 0.45) 40%, transparent 70%),
+    radial-gradient(circle at 80% 40%, rgba(255, 255, 255, 0.92) 0%, rgba(230, 245, 255, 0.45) 45%, transparent 70%);
+  filter: blur(56px);
+  opacity: 0.90;
 }
 
-/* Clouds visible during waypoint holds: capped at 0.40 max */
-#cloud-container.clouds-active {
-  opacity: 0.40;
+/* Full cloud cover during the hidden cut beat */
+#cloud-container.clouds-cover {
+  opacity: 1 !important;
+  transition: opacity 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* ── GTA V Quick Photoflash Burst (~110ms, peak opacity ~0.85) ──── */
+/* Cloud sweep out revealing India */
+#cloud-container.clouds-sweep-out {
+  opacity: 0 !important;
+  transition: opacity 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ── GTA V Quick Photoflash Burst (~120ms, peak opacity ~0.85) ──── */
 #white-flash {
   position: absolute;
   inset: 0;
@@ -579,7 +539,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 
 #white-flash.flash-burst {
-  animation: gta-flash-burst 110ms cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+  animation: gta-flash-burst 120ms cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
 }
 
 @keyframes gta-flash-burst {
@@ -599,62 +559,10 @@ button { cursor: pointer; font-family: inherit; }
   );
 }
 
-/* ── Crosshair Reticle ─────────────────────────────────────────── */
+/* ── Crosshair Reticle (Removed) ────────────────────────────────── */
 #crosshair {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 46px;
-  height: 46px;
-  z-index: 440;
-  opacity: 0;
-  transition: opacity 250ms ease, transform 180ms cubic-bezier(0.2, 1, 0.3, 1);
+  display: none !important;
 }
-
-#crosshair::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 4px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.85);
-  border-radius: 50%;
-}
-
-#crosshair.visible { opacity: 0.65; }
-
-#crosshair.locked {
-  opacity: 0.95;
-  transform: translate(-50%, -50%) scale(0.82);
-}
-
-#crosshair.locked .cr-tl,
-#crosshair.locked .cr-tr,
-#crosshair.locked .cr-bl,
-#crosshair.locked .cr-br {
-  border-color: var(--accent);
-}
-
-#crosshair.locked::after {
-  background: var(--accent);
-  box-shadow: 0 0 8px var(--accent);
-}
-
-.cr-tl, .cr-tr, .cr-bl, .cr-br {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border-color: rgba(255, 255, 255, 0.88);
-  border-style: solid;
-  transition: border-color 200ms ease;
-}
-.cr-tl { top: 0;    left: 0;   border-width: 1.5px 0 0 1.5px; }
-.cr-tr { top: 0;    right: 0;  border-width: 1.5px 1.5px 0 0; }
-.cr-bl { bottom: 0; left: 0;   border-width: 0 0 1.5px 1.5px; }
-.cr-br { bottom: 0; right: 0;  border-width: 0 1.5px 1.5px 0; }
 
 /* ── Skip Button — removed from UI ────────────────────────────────── */
 #skip-btn,
@@ -861,7 +769,7 @@ button { cursor: pointer; font-family: inherit; }
     transform: translateY(100%) !important;
     border-right: none;
     border-top: 1px solid rgba(255, 255, 255, 0.16);
-    transition: transform 850ms cubic-bezier(0.25, 1, 0.35, 1) !important;
+    transition: transform var(--dock-duration, 2200ms) cubic-bezier(0.25, 1, 0.35, 1) !important;
   }
 
   #form-panel.docked {

@@ -9,33 +9,112 @@
 
 'use strict';
 
-/* ── Destination & Fallbacks ([lng, lat] for MapLibre) ───────────── */
+/* ── Destination & Waypoints ([lng, lat] for MapLibre) ───────────── */
 const JAIPUR = [75.7873, 26.9124];
+const RAJASTHAN_CENTER = [73.85, 26.60];
+const INDIA_CENTER = [78.9629, 22.5937];
 const FALLBACK_LOC = [-118.2437, 34.0522]; // Los Santos / Los Angeles
 
-/* ── Phase Enum ─────────────────────────────────────────────────── */
+/* ── Runtime Timeline Configuration (Managed via timeline.json) ── */
+let timelineConfig = null;
+
+async function loadTimelineConfig() {
+  try {
+    const res = await fetchWithTimeout('timeline.json?v=' + Date.now(), 4000, {
+      cache: 'no-store'
+    });
+    if (res.ok) {
+      const parsed = await res.json();
+      if (parsed && Array.isArray(parsed.views) && parsed.views.length > 0) {
+        timelineConfig = parsed;
+        window.TIMELINE = timelineConfig;
+        console.log('%c🎬 ACTIVE TIMELINE LOADED FROM timeline.json:', 'background: #0c151b; color: #38bdf8; font-size: 13px; font-weight: bold; padding: 4px;', timelineConfig);
+      } else {
+        console.warn('timeline.json loaded but views array missing/empty:', parsed);
+      }
+    } else {
+      console.warn('timeline.json HTTP error status:', res.status);
+    }
+  } catch (e) {
+    console.warn('Could not load timeline.json, using built-in fallback:', e);
+  }
+
+  if (!timelineConfig) {
+    timelineConfig = {
+      settleMs: 600,
+      dockTransitionMs: 2200,
+      locations: {
+        jaipur: JAIPUR,
+        rajasthan: RAJASTHAN_CENTER,
+        india: INDIA_CENTER,
+        fallback_visitor: FALLBACK_LOC
+      },
+      views: [
+        { id: "view_1_street", index: 1, name: "Street (visitor)", target: "visitor", zoom: 15.0, approxAltitudeKm: 1.2, holdMs: 3000, colorGrade: "GROUND", breathing: true, crosshair: false, highlight: { enabled: false }, transitionMs: 0 },
+        { id: "view_2_area", index: 2, name: "Area (visitor)", target: "visitor", zoom: 11.0, approxAltitudeKm: 18, holdMs: 1200, colorGrade: "OUT_1", shutterSound: true, shutterFirst: true, cameraPop: true, flash: true, highlight: { enabled: false }, transitionMs: 180 },
+        { id: "view_3_state", index: 3, name: "State — California", target: "visitor", zoom: 6.5, approxAltitudeKm: 350, holdMs: 3000, colorGrade: "OUT_2", shutterSound: true, cameraPop: true, flash: true, highlight: { enabled: true, type: "visitor_state", defaultName: "California", defaultCountry: "United States", radiusKm: 280, fadeOutMs: 260 }, transitionMs: 200 },
+        { id: "hidden_cut", index: null, type: "hidden_cut", name: "Continent Jump", cloudSweepInMs: 200, flashPopMs: 120, cloudHoldMs: 200, cloudSweepOutMs: 250, destinationTarget: "india", destinationZoom: 5.0, colorGrade: "IN_1", transitionMs: 0 },
+        { id: "view_4_india", index: 4, name: "India", target: "india", zoom: 5.0, approxAltitudeKm: 1100, holdMs: 3000, colorGrade: "IN_1", shutterSound: false, cameraPop: false, flash: false, highlight: { enabled: false }, transitionMs: 0 },
+        { id: "view_5_rajasthan", index: 5, name: "Rajasthan", target: "rajasthan", zoom: 6.5, approxAltitudeKm: 350, holdMs: 3000, colorGrade: "IN_2", shutterSound: true, shutterFirst: false, cameraPop: true, flash: true, highlight: { enabled: false }, transitionMs: 200 },
+        { id: "view_6_jaipur", index: 6, name: "Jaipur", target: "jaipur", zoom: 10.5, approxAltitudeKm: 25, holdMs: 3000, colorGrade: "IN_3", shutterSound: true, cameraPop: true, flash: true, highlight: { enabled: false, type: "fixed", name: "Jaipur", country: "India", radiusKm: 28, fadeOutMs: 260 }, transitionMs: 220 },
+        { id: "view_7_final", index: 7, name: "Final — inside Jaipur (street)", target: "jaipur", zoom: 15.0, approxAltitudeKm: 1.2, holdMs: 1200, colorGrade: "LANDING", isLanding: true, landingSound: true, landingImpact: true, marker: false, crosshairLock: false, flash: true, highlight: { enabled: false }, transitionMs: 240 }
+      ]
+    };
+    window.TIMELINE = timelineConfig;
+  }
+
+  // Synchronize CSS custom property --dock-duration with timeline.json
+  if (timelineConfig.dockTransitionMs) {
+    document.documentElement.style.setProperty('--dock-duration', `${timelineConfig.dockTransitionMs}ms`);
+  }
+
+  return timelineConfig;
+}
+
+function resolveTargetCoords(target, stepCoords) {
+  if (stepCoords && Array.isArray(stepCoords) && stepCoords.length === 2) return stepCoords;
+  if (!target) return visitorCoords;
+  if (Array.isArray(target) && target.length === 2) return target;
+  if (target === 'visitor') return visitorCoords;
+  if (timelineConfig && timelineConfig.locations && timelineConfig.locations[target]) {
+    return timelineConfig.locations[target];
+  }
+  if (target === 'jaipur') return JAIPUR;
+  if (target === 'rajasthan') return RAJASTHAN_CENTER;
+  if (target === 'india') return INDIA_CENTER;
+  return visitorCoords;
+}
+
+function resolveZoom(step) {
+  if (typeof step.zoom === 'number') return step.zoom;
+  const dist = step.distanceKm || step.approxAltitudeKm || step.altitudeKm || step.distance || step.altitude;
+  if (typeof dist === 'number' && dist > 0) {
+    // Altitude in km to zoom level conversion (approx Mercator scale)
+    const z = Math.round((Math.log2(35800 / dist)) * 2) / 2;
+    return Math.max(0, Math.min(19, z));
+  }
+  return 10.0;
+}
+
+
+/* ── Phase Enum (7-View Instant-Cut Sequence) ────────────────────── */
 const PHASE = Object.freeze({
-  GROUND:      0,   // street-level Los Santos
-  OUT_1:       1,   // 12.5 → 8.0
-  OUT_2:       2,   // 8.0 → 4.5
-  OUT_3:       3,   // 4.5 → 3.0
-  PAN_1:       4,   // waypoint 1 (~25%)
-  PAN_2:       5,   // waypoint 2 (~55%)
-  PAN_3:       6,   // waypoint 3 (~85%, over Jaipur region)
-  IN_1:        7,   // 3.0 → 7.0
-  IN_2:        8,   // 7.0 → 11.0
-  IN_3:        9,   // 11.0 → 15.0
-  LANDING:     10,  // touchdown & suspension recoil
-  DOCK:        11,  // contact UI reveal
-  SKIP:        99,
+  VIEW_1_STREET:    1,   // Street (visitor, z15)
+  VIEW_2_AREA:      2,   // Area (visitor, z11)
+  VIEW_3_STATE:     3,   // State — California (z6.5)
+  CLOUD_CUT:        4,   // Hidden cut: cloud sweep + flash + silent jump
+  VIEW_4_INDIA:     5,   // India (z5.0)
+  VIEW_5_RAJASTHAN: 6,   // Rajasthan (z6.5)
+  VIEW_6_JAIPUR:    7,   // Jaipur district (z10.5)
+  VIEW_7_FINAL:     8,   // Final inside Jaipur street (z15)
+  SETTLE:           9,   // Settle before dock
+  DOCK:             10,  // Dock transition
+  SKIP:             99,
 });
 
 /* ── Authentic GTA V Color Grades ──────────────────────────────────
    - Ground level: Rich natural contrast, subtle filmic daylight
    - Ascending: Progressive cooling into desaturated surveillance tone
-   - PAN WP 1: Cool green
-   - PAN WP 2: Neutral grey-blue
-   - PAN WP 3: Warm amber begins
    - IN Steps: Progressively warming golden hour into Jaipur street clarity
    - Landing: Crisp golden hour warmth & vibrant clarity
 ────────────────────────────────────────────────────────────────── */
@@ -54,26 +133,6 @@ const GRADES = {
     filter: 'contrast(1.28) brightness(0.93) saturate(0.75) hue-rotate(95deg)',
     wash: 'rgba(50, 100, 100, 0.20)',
     grain: 0.26,
-  },
-  OUT_3: {
-    filter: 'contrast(1.32) brightness(0.87) saturate(0.38) hue-rotate(150deg)',
-    wash: 'rgba(22, 68, 108, 0.24)',
-    grain: 0.32,
-  },
-  PAN_1: {
-    filter: 'contrast(1.30) brightness(0.92) saturate(0.95) hue-rotate(75deg)',
-    wash: 'rgba(35, 105, 65, 0.24)',
-    grain: 0.26,
-  },
-  PAN_2: {
-    filter: 'contrast(1.28) brightness(0.90) saturate(0.45) hue-rotate(175deg)',
-    wash: 'rgba(28, 62, 92, 0.26)',
-    grain: 0.28,
-  },
-  PAN_3: {
-    filter: 'contrast(1.26) brightness(0.94) saturate(0.90) hue-rotate(22deg)',
-    wash: 'rgba(115, 78, 28, 0.20)',
-    grain: 0.22,
   },
   IN_1: {
     filter: 'contrast(1.28) brightness(0.92) saturate(0.80) hue-rotate(18deg)',
@@ -99,7 +158,7 @@ const GRADES = {
 
 /* ── Module State ───────────────────────────────────────────────── */
 let map = null;
-let currentPhase = PHASE.GROUND;
+let currentPhase = PHASE.VIEW_1_STREET;
 let visitorCoords = [...FALLBACK_LOC]; // [lng, lat]
 let visitorState = 'California';
 let visitorCountry = 'United States';
@@ -116,10 +175,10 @@ const $ = id => document.getElementById(id);
 function roundCoord(v) { return Math.round(v * 2) / 2; }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-function fetchWithTimeout(url, ms) {
+function fetchWithTimeout(url, ms = 3000, opts = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
-  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
+  return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(timer));
 }
 
 /* ── IP Geolocation ─────────────────────────────────────────────── */
@@ -166,32 +225,146 @@ async function fetchLocation() {
   return loc;
 }
 
-/* ── MapLibre GL Flat Overhead Engine ───────────────────────────── */
-function initMap(center, zoom = 12.5, pitch = 0, bearing = 0) {
+/* ── OpenFreeMap Stylized Vector Map Engine ──────────────────────── */
+const VECTOR_STYLE = {
+  version: 8,
+  sources: {
+    openmaptiles: {
+      type: 'vector',
+      url: 'https://tiles.openfreemap.org/planet'
+    }
+  },
+  layers: [
+    // 1. Land / background: #9C9080 (muted khaki, not green)
+    {
+      id: 'background',
+      type: 'background',
+      paint: {
+        'background-color': '#9C9080'
+      }
+    },
+    // 2. Parks / vegetation: #7C8B6E (slightly darker than land, still muted)
+    {
+      id: 'park',
+      type: 'fill',
+      source: 'openmaptiles',
+      'source-layer': 'park',
+      paint: {
+        'fill-color': '#7C8B6E'
+      }
+    },
+    {
+      id: 'landcover_wood',
+      type: 'fill',
+      source: 'openmaptiles',
+      'source-layer': 'landcover',
+      filter: ['match', ['get', 'class'], ['wood', 'forest', 'grass', 'scrub'], true, false],
+      paint: {
+        'fill-color': '#7C8B6E'
+      }
+    },
+    // 3. Water: #37474F (flat dark slate, no texture/gradient)
+    {
+      id: 'water',
+      type: 'fill',
+      source: 'openmaptiles',
+      'source-layer': 'water',
+      paint: {
+        'fill-color': '#37474F',
+        'fill-antialias': true
+      }
+    },
+    {
+      id: 'waterway',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'waterway',
+      paint: {
+        'line-color': '#37474F',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1, 14, 3]
+      }
+    },
+    // Subtle administrative boundaries
+    {
+      id: 'boundary_country',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'boundary',
+      filter: ['==', ['get', 'admin_level'], 2],
+      paint: {
+        'line-color': 'rgba(232, 228, 218, 0.40)',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 1, 6, 1.5],
+        'line-dasharray': [3, 2]
+      }
+    },
+    {
+      id: 'boundary_state',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'boundary',
+      minzoom: 4,
+      filter: ['==', ['get', 'admin_level'], 4],
+      paint: {
+        'line-color': 'rgba(232, 228, 218, 0.30)',
+        'line-width': 1,
+        'line-dasharray': [2, 2]
+      }
+    },
+    // 4. Minor roads: #E8E4DA, thinner, hidden above ~zoom 9 (visible only at zoom >= 9)
+    {
+      id: 'road_minor',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'transportation',
+      minzoom: 9,
+      filter: ['match', ['get', 'class'], ['minor', 'service', 'track', 'path', 'residential'], true, false],
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round'
+      },
+      paint: {
+        'line-color': '#E8E4DA',
+        'line-opacity': 0.85,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 14, 1.2, 17, 2]
+      }
+    },
+    // 5. Major roads: #E8E4DA, thin, 1-1.5px
+    {
+      id: 'road_major',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'transportation',
+      filter: ['match', ['get', 'class'], ['motorway', 'trunk', 'primary', 'secondary', 'tertiary'], true, false],
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round'
+      },
+      paint: {
+        'line-color': '#E8E4DA',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1, 10, 1.4, 15, 2.5]
+      }
+    },
+    // 6. Buildings: #B7B0A0 fill, hidden above ~zoom 11 (visible only at zoom >= 11)
+    {
+      id: 'building',
+      type: 'fill',
+      source: 'openmaptiles',
+      'source-layer': 'building',
+      minzoom: 11,
+      paint: {
+        'fill-color': '#B7B0A0',
+        'fill-antialias': true
+      }
+    }
+    // 7. Labels / POI icons / road shields: all hidden, every zoom (omitted)
+  ]
+};
+
+function initMap(center, zoom = 15.0, pitch = 0, bearing = 0) {
   return new Promise((resolve) => {
     map = new maplibregl.Map({
       container: 'map',
-      style: {
-        version: 8,
-        sources: {
-          'esri-satellite': {
-            type: 'raster',
-            tiles: [
-              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-            ],
-            tileSize: 256,
-            maxzoom: 19,
-            attribution: ''
-          }
-        },
-        layers: [
-          {
-            id: 'esri-satellite-layer',
-            type: 'raster',
-            source: 'esri-satellite'
-          }
-        ]
-      },
+      style: VECTOR_STYLE,
       center: center,
       zoom: zoom,
       pitch: 0,
@@ -240,7 +413,7 @@ function easeCamera({ center, zoom, duration = 180, easing = (t) => t }) {
   });
 }
 
-function jumpCamera(center, zoom = 3.0) {
+function jumpCamera(center, zoom = 5.0) {
   if (currentPhase === PHASE.SKIP || !map) return;
   map.jumpTo({
     center,
@@ -254,64 +427,44 @@ function flyCamera(opts) {
   return easeCamera(opts);
 }
 
-function triggerCameraPop() {
+/* ── Continuous Directional Motion Blur During Active Travel ────── */
+function setMotionBlur(active, direction = 'out') {
   const mapEl = $('map');
   if (!mapEl) return;
-  mapEl.classList.remove('camera-shake', 'camera-shake-pop');
-  void mapEl.offsetWidth; // force DOM reflow
-  mapEl.classList.add('camera-shake-pop');
-}
-
-/* ── Tile Prefetching Safety Net ────────────────────────────────── */
-function lngLatToTile(lng, lat, z) {
-  const n = Math.pow(2, z);
-  const x = Math.floor(((lng + 180) / 360) * n);
-  const latRad = lat * Math.PI / 180;
-  const y = Math.floor((1 - Math.asinh(Math.tan(latRad)) / Math.PI) / 2 * n);
-  const maxTile = Math.floor(n - 1);
-  return {
-    x: Math.max(0, Math.min(maxTile, x)),
-    y: Math.max(0, Math.min(maxTile, y))
-  };
-}
-
-function prefetchTilesForPoint(coords, zoom, radius = 1) {
-  const center = lngLatToTile(coords[0], coords[1], zoom);
-  const maxTile = Math.pow(2, zoom) - 1;
-  for (let dx = -radius; dx <= radius; dx++) {
-    for (let dy = -radius; dy <= radius; dy++) {
-      const x = ((center.x + dx) % (maxTile + 1) + (maxTile + 1)) % (maxTile + 1);
-      const y = center.y + dy;
-      if (y >= 0 && y <= maxTile) {
-        const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${y}/${x}`;
-        const img = new Image();
-        img.src = url;
-      }
-    }
+  if (active) {
+    mapEl.classList.remove('blur-zoom-out', 'blur-zoom-in');
+    mapEl.classList.add('camera-motion-blur', direction === 'out' ? 'blur-zoom-out' : 'blur-zoom-in');
+  } else {
+    mapEl.classList.remove('camera-motion-blur', 'blur-zoom-out', 'blur-zoom-in');
   }
 }
 
-function prefetchSequenceTiles(origin, dest, waypoints) {
-  try {
-    // Prefetch zoom 3 tiles covering global waypoints
-    waypoints.forEach(wp => prefetchTilesForPoint(wp, 3, 2));
-    prefetchTilesForPoint(dest, 3, 2);
-    // Prefetch descent zoom steps into Jaipur
-    prefetchTilesForPoint(dest, 7, 2);
-    prefetchTilesForPoint(dest, 11, 2);
-    prefetchTilesForPoint(dest, 15, 2);
-  } catch (e) {
-    console.warn('Tile prefetch error:', e);
-  }
+function triggerCameraPop() {
+  // Replaced with continuous motion blur during active camera travel
 }
 
-/* ── Color Grade ────────────────────────────────────────────────── */
-function applyGrade(gradeKey) {
+/* ── Altitude-Scaled Blur & Color Grade Stacking ─────────────────── */
+const ALTITUDE_BLUR = {
+  high: 'blur(2.5px) saturate(0.55) contrast(1.3)',
+  low: 'blur(0.5px) saturate(0.85) contrast(1.15)'
+};
+
+function applyGrade(gradeKey, zoomLevel) {
   const g = GRADES[gradeKey];
   if (!g) return;
 
+  const isLowAltitude = (typeof zoomLevel === 'number')
+    ? zoomLevel >= 10.0
+    : (gradeKey === 'GROUND' || gradeKey === 'IN_3' || gradeKey === 'LANDING');
+
+  const altitudeAddition = isLowAltitude ? ALTITUDE_BLUR.low : ALTITUDE_BLUR.high;
+  const combinedFilter = `${g.filter} ${altitudeAddition}`;
+
   const mapEl = $('map');
-  if (mapEl) mapEl.style.filter = g.filter;
+  if (mapEl) {
+    mapEl.style.setProperty('--grade-filter', combinedFilter);
+    mapEl.style.filter = combinedFilter;
+  }
 
   const washEl = $('color-wash');
   if (washEl) washEl.style.background = g.wash;
@@ -320,7 +473,7 @@ function applyGrade(gradeKey) {
   if (grainEl) grainEl.style.opacity = String(g.grain);
 }
 
-/* ── Flash Triggers (Short ~110ms Burst) ────────────────────────── */
+/* ── Flash Triggers (Short ~120ms Burst) ────────────────────────── */
 function triggerFlash() {
   const flash = $('white-flash');
   if (!flash) return;
@@ -329,23 +482,27 @@ function triggerFlash() {
   flash.className = 'flash-burst';
 }
 
-/* ── Cloud Layer Controls (Postcard Accent During Holds) ────────── */
-function setClouds(state) {
+/* ── Cloud Layer Controls (Hidden Cut Sweep Beat) ───────────────── */
+function sweepCloudsIn() {
   const clouds = $('cloud-container');
   if (!clouds) return;
-  if (state === 'active') {
-    clouds.classList.add('clouds-active');
-  } else {
-    clouds.classList.remove('clouds-active');
-  }
+  clouds.classList.remove('clouds-sweep-out');
+  void clouds.offsetWidth;
+  clouds.classList.add('clouds-cover');
 }
 
-function showPostcardClouds() {
-  setClouds('active');
+function sweepCloudsOut() {
+  const clouds = $('cloud-container');
+  if (!clouds) return;
+  clouds.classList.remove('clouds-cover');
+  void clouds.offsetWidth;
+  clouds.classList.add('clouds-sweep-out');
 }
 
 function hideClouds() {
-  setClouds('none');
+  const clouds = $('cloud-container');
+  if (!clouds) return;
+  clouds.classList.remove('clouds-cover', 'clouds-sweep-out');
 }
 
 /* ── Idle Camera Breathing ──────────────────────────────────────── */
@@ -367,42 +524,34 @@ function triggerSpeedStreaks() {
   el.classList.add('active');
 }
 
-/* ── Crosshair Reticle Controls ────────────────────────────────── */
+/* ── Crosshair Reticle Controls (Disabled) ──────────────────────── */
 function showCrosshair() {
   const ch = $('crosshair');
-  if (ch) {
-    ch.classList.remove('locked');
-    ch.classList.add('visible');
-  }
+  if (ch) ch.style.display = 'none';
 }
 
 function lockCrosshair() {
   const ch = $('crosshair');
-  if (ch) {
-    ch.classList.add('visible', 'locked');
-  }
+  if (ch) ch.style.display = 'none';
 }
 
 function hideCrosshair() {
   const ch = $('crosshair');
-  if (ch) {
-    ch.classList.remove('visible', 'locked');
-  }
+  if (ch) ch.style.display = 'none';
 }
 
-/* ── MapLibre Jaipur Radar Target Marker ────────────────────────── */
+/* ── MapLibre Jaipur Radar Target Marker (Removed) ─────────────── */
 function addJaipurMarker() {
-  if (jaipurMarker || !map) return;
-  const el = document.createElement('div');
-  el.className = 'jaipur-marker-element';
-  el.innerHTML = `
-    <div class="marker-ring" aria-hidden="true"></div>
-    <div class="marker-dot" aria-hidden="true"></div>
-  `;
+  removeJaipurMarker();
+}
 
-  jaipurMarker = new maplibregl.Marker({ element: el })
-    .setLngLat(JAIPUR)
-    .addTo(map);
+function removeJaipurMarker() {
+  if (jaipurMarker) {
+    try {
+      jaipurMarker.remove();
+    } catch (e) {}
+    jaipurMarker = null;
+  }
 }
 
 /* ── Origin State White Radar Highlight ─────────────────────────── */
@@ -430,14 +579,17 @@ function createGeoJSONCircle(center, radiusKm, points = 64) {
   };
 }
 
-async function renderStateHighlight(stateName, countryName, centerCoords) {
+let currentHighlightId = 0;
+
+async function renderHighlight(stateName, countryName, centerCoords, radiusKm = 150) {
   if (!map) return;
+  const thisId = ++currentHighlightId;
 
   removeStateHighlight();
 
   const isSmallRegion = stateName && (stateName.toLowerCase() === 'delhi' || stateName.toLowerCase().includes('delhi'));
-  const radiusKm = isSmallRegion ? 45 : 130;
-  const initialGeoJSON = createGeoJSONCircle(centerCoords, radiusKm);
+  const effectiveRadius = isSmallRegion ? 45 : radiusKm;
+  const initialGeoJSON = createGeoJSONCircle(centerCoords, effectiveRadius);
 
   try {
     if (!map.getSource('state-highlight')) {
@@ -452,6 +604,7 @@ async function renderStateHighlight(stateName, countryName, centerCoords) {
         source: 'state-highlight',
         paint: {
           'fill-color': '#ffffff',
+          'fill-opacity-transition': { duration: 180, delay: 0 },
           'fill-opacity': 0.20
         }
       });
@@ -464,15 +617,22 @@ async function renderStateHighlight(stateName, countryName, centerCoords) {
           'line-color': '#ffffff',
           'line-width': 2.5,
           'line-dasharray': [2, 2],
+          'line-opacity-transition': { duration: 180, delay: 0 },
           'line-opacity': 0.95
         }
       });
+    } else {
+      map.getSource('state-highlight').setData(initialGeoJSON);
+      map.setPaintProperty('state-fill', 'fill-opacity-transition', { duration: 180, delay: 0 });
+      map.setPaintProperty('state-fill', 'fill-opacity', 0.20);
+      map.setPaintProperty('state-line', 'line-opacity-transition', { duration: 180, delay: 0 });
+      map.setPaintProperty('state-line', 'line-opacity', 0.95);
     }
   } catch (e) {
-    console.warn('MapLibre state highlight layer:', e);
+    console.warn('MapLibre highlight layer:', e);
   }
 
-  // Refine asynchronously with exact state polygon if available
+  // Refine asynchronously with exact polygon if available
   try {
     const q = encodeURIComponent(`${stateName}, ${countryName || ''}`);
     const res = await fetchWithTimeout(
@@ -481,18 +641,40 @@ async function renderStateHighlight(stateName, countryName, centerCoords) {
     );
     if (!res.ok) return;
     const data = await res.json();
+    if (thisId !== currentHighlightId) return; // stale request
     if (
       data &&
       data[0] &&
       data[0].geojson &&
       (data[0].geojson.type === 'Polygon' || data[0].geojson.type === 'MultiPolygon')
     ) {
-      if (currentPhase === PHASE.GROUND && map && map.getSource('state-highlight')) {
+      if (map && map.getSource('state-highlight')) {
         map.getSource('state-highlight').setData(data[0].geojson);
       }
     }
   } catch (e) {
     // Retain circle geometry
+  }
+}
+
+// Alias for backwards compatibility
+const renderStateHighlight = renderHighlight;
+
+async function fadeHighlight(duration = 260) {
+  if (!map) return;
+  try {
+    if (map.getLayer('state-fill')) {
+      map.setPaintProperty('state-fill', 'fill-opacity-transition', { duration, delay: 0 });
+      map.setPaintProperty('state-fill', 'fill-opacity', 0);
+    }
+    if (map.getLayer('state-line')) {
+      map.setPaintProperty('state-line', 'line-opacity-transition', { duration, delay: 0 });
+      map.setPaintProperty('state-line', 'line-opacity', 0);
+    }
+    await sleep(duration);
+    removeStateHighlight();
+  } catch (e) {
+    removeStateHighlight();
   }
 }
 
@@ -797,228 +979,147 @@ function playMechanicalDockSound() {
    ════════════════════════════════════════════════════════════════ */
 async function runGTASequence() {
   if (currentPhase === PHASE.SKIP) return;
+  if (!timelineConfig) await loadTimelineConfig();
 
-  /* ──────────────────────────────────────────────────────────────
-     GROUND (start)
-     Zoom: 12.5 | Pitch: 0° | Duration: hold 1500ms
-     State highlight visible, crosshair reticle active, camera breathing.
-  ────────────────────────────────────────────────────────────── */
-  currentPhase = PHASE.GROUND;
-  applyGrade('GROUND');
-  showCrosshair();
-  hideClouds();
+  const views = timelineConfig.views || [];
 
-  renderStateHighlight(visitorState, visitorCountry, visitorCoords);
+  const v1 = (timelineConfig && timelineConfig.views && timelineConfig.views[0]) || { zoom: 15.0, colorGrade: 'GROUND' };
+  let currentZoom = resolveZoom(v1);
+  let currentCoords = resolveTargetCoords(v1.target, v1.coords);
 
-  // Discrete waypoints across the flat map (Los Santos → Jaipur)
-  const WP1 = [
-    visitorCoords[0] + 0.25 * (JAIPUR[0] - visitorCoords[0]),
-    visitorCoords[1] + 0.25 * (JAIPUR[1] - visitorCoords[1])
-  ]; // ~25% along path (Western Atlantic / US East)
-  const WP2 = [
-    visitorCoords[0] + 0.55 * (JAIPUR[0] - visitorCoords[0]),
-    visitorCoords[1] + 0.55 * (JAIPUR[1] - visitorCoords[1])
-  ]; // ~55% along path (Eastern Atlantic / North Africa)
-  const WP3 = [62.0, 27.2]; // ~85% along path (over Jaipur approach region)
+  for (let i = 0; i < views.length; i++) {
+    if (currentPhase === PHASE.SKIP) return;
+    const step = views[i];
 
-  // Warm up destination and waypoint tiles during ground hold
-  prefetchSequenceTiles(visitorCoords, JAIPUR, [WP1, WP2, WP3]);
+    if (step.type === 'hidden_cut') {
+      currentPhase = PHASE.CLOUD_CUT;
+      startCloudWind();
+      sweepCloudsIn();
+      await sleep(step.cloudSweepInMs || 200);
+      if (currentPhase === PHASE.SKIP) return;
 
-  addBreathing();
-  await sleep(1500);
-  removeBreathing();
-  if (currentPhase === PHASE.SKIP) return;
+      // Mid-flash silent camera jump under cloud cover (instant cut)
+      triggerFlash();
+      playShutterClackSound(false);
+      const destCoords = resolveTargetCoords(step.destinationTarget);
+      const destZoom = step.destinationZoom || 5.0;
+      jumpCamera(destCoords, destZoom);
+      if (step.colorGrade) applyGrade(step.colorGrade, destZoom);
 
-  /* ──────────────────────────────────────────────────────────────
-     OUT_1
-     Zoom: 12.5 → 8.0 | Duration: 180ms | Hold after: 150ms | Pitch: 0°
-     shutter-click + tiny shake pop
-  ────────────────────────────────────────────────────────────── */
-  currentPhase = PHASE.OUT_1;
-  removeStateHighlight();
-  triggerFlash();
-  playShutterClackSound(true);
-  triggerCameraPop();
-  applyGrade('OUT_1');
+      await sleep(step.flashPopMs || 120);
+      if (currentPhase === PHASE.SKIP) return;
 
-  await easeCamera({
-    center: visitorCoords,
-    zoom: 8.0,
-    duration: 180
-  });
-  if (currentPhase === PHASE.SKIP) return;
-  await sleep(150);
-  if (currentPhase === PHASE.SKIP) return;
+      // Hold under full cloud cover
+      await sleep(step.cloudHoldMs || 200);
+      if (currentPhase === PHASE.SKIP) return;
 
-  /* ──────────────────────────────────────────────────────────────
-     OUT_2
-     Zoom: 8.0 → 4.5 | Duration: 180ms | Hold after: 150ms | Pitch: 0°
-     shutter-click + tiny shake pop
-  ────────────────────────────────────────────────────────────── */
-  currentPhase = PHASE.OUT_2;
-  triggerFlash();
-  playShutterClackSound(false);
-  triggerCameraPop();
-  applyGrade('OUT_2');
+      // Cloud sweep out revealing next territory
+      sweepCloudsOut();
+      stopCloudWind();
+      await sleep(step.cloudSweepOutMs || 250);
+      if (currentPhase === PHASE.SKIP) return;
 
-  await easeCamera({
-    center: visitorCoords,
-    zoom: 4.5,
-    duration: 180
-  });
-  if (currentPhase === PHASE.SKIP) return;
-  await sleep(150);
-  if (currentPhase === PHASE.SKIP) return;
+      currentZoom = destZoom;
+      currentCoords = destCoords;
+      continue;
+    }
 
-  /* ──────────────────────────────────────────────────────────────
-     OUT_3
-     Zoom: 4.5 → 3.0 (strictly z3, never below) | Duration: 200ms
-     Hold after: 250ms | Pitch: 0°
-     shutter-click + tiny shake pop
-  ────────────────────────────────────────────────────────────── */
-  currentPhase = PHASE.OUT_3;
-  triggerFlash();
-  playShutterClackSound(false);
-  triggerCameraPop();
-  applyGrade('OUT_3');
+    // Regular view step
+    const targetCoords = resolveTargetCoords(step.target, step.coords);
+    const zoomLevel = resolveZoom(step);
+    const transitionMs = (typeof step.transitionMs === 'number') ? step.transitionMs : 200;
 
-  await easeCamera({
-    center: visitorCoords,
-    zoom: 3.0,
-    duration: 200
-  });
-  if (currentPhase === PHASE.SKIP) return;
-  await sleep(250);
-  if (currentPhase === PHASE.SKIP) return;
+    // Fast zoom travel with synchronized motion blur for steps after View 1
+    if (i > 0 && transitionMs > 0) {
+      const isZoomOut = zoomLevel < currentZoom;
+      const direction = isZoomOut ? 'out' : 'in';
 
-  /* ──────────────────────────────────────────────────────────────
-     PAN waypoint 1 (~25% along path)
-     Hold at 3.0 | hard cut, no interpolation | 350ms | Pitch: 0°
-     grade: cool green | clouds visible during 350ms hold
-  ────────────────────────────────────────────────────────────── */
-  currentPhase = PHASE.PAN_1;
-  jumpCamera(WP1, 3.0);
-  triggerFlash();
-  playShutterClackSound(false);
-  triggerCameraPop();
-  applyGrade('PAN_1');
-  showPostcardClouds();
+      // Accents trigger at start of fast zoom motion
+      if (step.flash) triggerFlash();
+      if (step.shutterSound) playShutterClackSound(step.shutterFirst || false);
 
-  await sleep(350);
-  hideClouds();
-  if (currentPhase === PHASE.SKIP) return;
+      setMotionBlur(true, direction);
+      await easeCamera({
+        center: targetCoords,
+        zoom: zoomLevel,
+        duration: transitionMs,
+        easing: (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+      });
+      setMotionBlur(false);
+    } else if (i > 0 && transitionMs === 0) {
+      if (step.flash) triggerFlash();
+      if (step.shutterSound) playShutterClackSound(step.shutterFirst || false);
+      jumpCamera(targetCoords, zoomLevel);
+    }
 
-  /* ──────────────────────────────────────────────────────────────
-     PAN waypoint 2 (~55% along path)
-     Hold at 3.0 | hard cut | 350ms | Pitch: 0°
-     grade: neutral grey-blue | clouds visible during 350ms hold
-  ────────────────────────────────────────────────────────────── */
-  currentPhase = PHASE.PAN_2;
-  jumpCamera(WP2, 3.0);
-  triggerFlash();
-  playShutterClackSound(false);
-  triggerCameraPop();
-  applyGrade('PAN_2');
-  showPostcardClouds();
+    // Map view index to PHASE enum upon arrival
+    currentPhase = step.index || currentPhase;
 
-  await sleep(350);
-  hideClouds();
-  if (currentPhase === PHASE.SKIP) return;
+    // Apply color grade and altitude blur tier
+    if (step.colorGrade) applyGrade(step.colorGrade, zoomLevel);
 
-  /* ──────────────────────────────────────────────────────────────
-     PAN waypoint 3 (~85%, over Jaipur region)
-     Hold at 3.0 | hard cut | 350ms | Pitch: 0°
-     grade: warm amber begins | clouds visible during 350ms hold
-  ────────────────────────────────────────────────────────────── */
-  currentPhase = PHASE.PAN_3;
-  jumpCamera(WP3, 3.0);
-  triggerFlash();
-  playShutterClackSound(false);
-  triggerCameraPop();
-  applyGrade('PAN_3');
-  showPostcardClouds();
+    // Crosshair & breathing
+    if (step.crosshair) showCrosshair();
+    if (step.breathing) addBreathing(); else removeBreathing();
 
-  await sleep(350);
-  hideClouds();
-  if (currentPhase === PHASE.SKIP) return;
+    // Highlights
+    if (step.highlight && step.highlight.enabled) {
+      const isVisitor = step.highlight.type === 'visitor_state';
+      const hName = isVisitor ? (visitorState || step.highlight.defaultName || 'California') : (step.highlight.name || 'Jaipur');
+      const hCountry = isVisitor ? (visitorCountry || step.highlight.defaultCountry || 'United States') : (step.highlight.country || 'India');
+      renderHighlight(hName, hCountry, targetCoords, step.highlight.radiusKm || 150);
+    } else {
+      removeStateHighlight();
+    }
 
-  /* ──────────────────────────────────────────────────────────────
-     IN_1
-     Zoom: 3.0 → 7.0 | Duration: 180ms | Hold after: 150ms | Pitch: 0°
-     shutter-click + tiny shake pop
-  ────────────────────────────────────────────────────────────── */
-  currentPhase = PHASE.IN_1;
-  triggerFlash();
-  playShutterClackSound(false);
-  triggerCameraPop();
-  applyGrade('IN_1');
+    // Landing touchdown impact
+    if (step.isLanding) {
+      currentPhase = PHASE.VIEW_7_FINAL;
+      if (step.landingSound) playLandingSound();
+      if (step.landingImpact) {
+        const mapEl = $('map');
+        if (mapEl) {
+          mapEl.classList.remove('camera-recoil-landing');
+          void mapEl.offsetWidth;
+          mapEl.classList.add('camera-recoil-landing');
+          setTimeout(() => mapEl && mapEl.classList.remove('camera-recoil-landing'), 370);
+        }
+      }
+      if (step.crosshairLock) lockCrosshair();
+      if (step.marker) addJaipurMarker();
+    }
 
-  await easeCamera({
-    center: JAIPUR,
-    zoom: 7.0,
-    duration: 180
-  });
-  if (currentPhase === PHASE.SKIP) return;
-  await sleep(150);
-  if (currentPhase === PHASE.SKIP) return;
+    // Hold duration & highlight fade handling
+    const holdMs = (typeof step.holdMs === 'number') ? step.holdMs : 3000;
+    console.log(`🎬 [View ${step.index || (i + 1)}] "${step.name || step.id}": zoom=${zoomLevel}, travel=${transitionMs}ms, hold=${holdMs}ms, target=`, targetCoords);
 
-  /* ──────────────────────────────────────────────────────────────
-     IN_2
-     Zoom: 7.0 → 11.0 | Duration: 180ms | Hold after: 150ms | Pitch: 0°
-     shutter-click + tiny shake pop
-  ────────────────────────────────────────────────────────────── */
-  currentPhase = PHASE.IN_2;
-  triggerFlash();
-  playShutterClackSound(false);
-  triggerCameraPop();
-  applyGrade('IN_2');
+    if (step.highlight && step.highlight.enabled) {
+      const fadeMs = Math.min((typeof step.highlight.fadeOutMs === 'number') ? step.highlight.fadeOutMs : 260, holdMs);
+      await sleep(holdMs - fadeMs);
+      if (currentPhase === PHASE.SKIP) return;
+      await fadeHighlight(fadeMs);
+      if (currentPhase === PHASE.SKIP) return;
+    } else {
+      await sleep(holdMs);
+      if (currentPhase === PHASE.SKIP) return;
+    }
 
-  await easeCamera({
-    center: JAIPUR,
-    zoom: 11.0,
-    duration: 180
-  });
-  if (currentPhase === PHASE.SKIP) return;
-  await sleep(150);
-  if (currentPhase === PHASE.SKIP) return;
-
-  /* ──────────────────────────────────────────────────────────────
-     IN_3 (landing)
-     Zoom: 11.0 → 15.0 | Duration: 220ms | Hold after: 300ms | Pitch: 0°
-     landing flash + thud sound, then dock
-  ────────────────────────────────────────────────────────────── */
-  currentPhase = PHASE.IN_3;
-  await easeCamera({
-    center: JAIPUR,
-    zoom: 15.0,
-    duration: 220
-  });
-  if (currentPhase === PHASE.SKIP) return;
-
-  // Touchdown impact!
-  currentPhase = PHASE.LANDING;
-  triggerFlash();
-  playLandingSound();
-  applyGrade('LANDING');
-
-  const mapEl = $('map');
-  if (mapEl) {
-    mapEl.classList.remove('camera-recoil-landing', 'camera-shake', 'camera-shake-pop');
-    void mapEl.offsetWidth;
-    mapEl.classList.add('camera-recoil-landing');
-    setTimeout(() => mapEl && mapEl.classList.remove('camera-recoil-landing'), 370);
+    currentZoom = zoomLevel;
+    currentCoords = targetCoords;
   }
 
-  lockCrosshair();
-  addJaipurMarker();
-
-  await sleep(300);
+  /* ──────────────────────────────────────────────────────────────
+     SETTLE before dock
+  ────────────────────────────────────────────────────────────── */
+  currentPhase = PHASE.SETTLE;
+  hideCrosshair();
+  await sleep(timelineConfig.settleMs || 600);
   if (currentPhase === PHASE.SKIP) return;
 
-  // Dock Transition
-  hideCrosshair();
-  await sleep(150);
-  if (currentPhase !== PHASE.SKIP) await runDock();
+  /* ──────────────────────────────────────────────────────────────
+     DOCK: Dynamic transition duration from timeline.json
+  ────────────────────────────────────────────────────────────── */
+  await runDock();
 }
 
 /* ── Dock Transition ────────────────────────────────────────────── */
@@ -1038,8 +1139,10 @@ async function runDock() {
     $('cinematic').classList.add('docked'); // map gracefully slides to the right
   });
 
-  // Pin card appears as the map settles into the right half
-  await sleep(650);
+  const dockMs = (timelineConfig && timelineConfig.dockTransitionMs) || 2200;
+
+  // Pin card appears mid-way through the slide
+  await sleep(Math.floor(dockMs / 2));
   const card = $('pin-card');
   if (card) {
     card.classList.remove('pin-hidden');
@@ -1052,7 +1155,7 @@ async function runDock() {
     if (map) {
       try { map.resize(); } catch (e) { }
     }
-  }, 750);
+  }, dockMs + 50);
 }
 
 /* ── Skip Intro ─────────────────────────────────────────────────── */
@@ -1071,6 +1174,7 @@ function skipIntro() {
 
   stopCloudWind();
   hideCrosshair();
+  setMotionBlur(false);
 
   if (map) {
     map.stop();
@@ -1080,7 +1184,7 @@ function skipIntro() {
       pitch: 0,
       bearing: 0
     });
-    addJaipurMarker();
+    removeJaipurMarker();
   }
 
   applyGrade('LANDING');
@@ -1112,7 +1216,8 @@ function showFinalState() {
 
   applyGrade('LANDING');
   hideCrosshair();
-  setClouds('none');
+  hideClouds();
+  setMotionBlur(false);
 
   if (map) {
     map.jumpTo({
@@ -1121,7 +1226,7 @@ function showFinalState() {
       pitch: 0,
       bearing: 0
     });
-    addJaipurMarker();
+    removeJaipurMarker();
   }
 
   const card = $('pin-card');
@@ -1256,15 +1361,21 @@ async function main() {
   visitorCountry = 'United States';
   visitorCity = 'Los Santos';
 
+  await loadTimelineConfig();
+
   if (forceSkip) {
-    await initMap(JAIPUR, 15.0, 0, 0);
+    const landingZoom = (timelineConfig && timelineConfig.views && timelineConfig.views.find(v => v.isLanding)?.zoom) || 15.0;
+    await initMap(JAIPUR, landingZoom, 0, 0);
     showFinalState();
     return;
   }
 
-  // Start at street-level zoom 12.5 — the overhead camera
-  await initMap(visitorCoords, 12.5, 0, 0);
-  applyGrade('GROUND');
+  // Start at View 1's configured zoom & color grade
+  const v1 = (timelineConfig && timelineConfig.views && timelineConfig.views[0]) || { zoom: 15.0, colorGrade: 'GROUND' };
+  const v1Coords = resolveTargetCoords(v1.target, v1.coords);
+  const v1Zoom = resolveZoom(v1);
+  await initMap(v1Coords, v1Zoom, 0, 0);
+  applyGrade(v1.colorGrade || 'GROUND', v1Zoom);
 
   await runGTASequence();
 }
