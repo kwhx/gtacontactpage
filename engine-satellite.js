@@ -65,13 +65,13 @@
     }
   ];
 
-  let _running     = false;
-  let _canceled    = false;
-  let _timers      = [];
-  let _anims       = [];
-  let _canvas      = null;
-  let _ctx         = null;
-  let _isHovering  = false;
+  let _running = false;
+  let _canceled = false;
+  let _timers = [];
+  let _anims = [];
+  let _canvas = null;
+  let _ctx = null;
+  let _isHovering = false;
 
   function qs(id) { return document.getElementById(id); }
 
@@ -89,7 +89,7 @@
     _canceled = true;
     _timers.forEach(t => clearTimeout(t));
     _timers = [];
-    _anims.forEach(a => { try { a.cancel(); } catch (_) {} });
+    _anims.forEach(a => { try { a.cancel(); } catch (_) { } });
     _anims = [];
   }
 
@@ -122,13 +122,13 @@
     const f = qs('gta-flash');
     if (!f) return;
     _anims = _anims.filter(a => {
-      if (a._isFlash) { try { a.cancel(); } catch (_) {} return false; }
+      if (a._isFlash) { try { a.cancel(); } catch (_) { } return false; }
       return true;
     });
     const a = f.animate([
-      { opacity: 0,    offset: 0 },
+      { opacity: 0, offset: 0 },
       { opacity: 0.92, offset: 0.14 },
-      { opacity: 0,    offset: 1 }
+      { opacity: 0, offset: 1 }
     ], { duration: 120, easing: 'linear', fill: 'none' });
     a._isFlash = true;
     _anims.push(a);
@@ -136,7 +136,7 @@
 
   function thump() {
     if (typeof W.playGtaThumpSound === 'function') {
-      try { W.playGtaThumpSound(); } catch (_) {}
+      try { W.playGtaThumpSound(); } catch (_) { }
     }
   }
 
@@ -166,36 +166,36 @@
   function buildCloudCanvas() {
     if (_cloudCanvas) return _cloudCanvas;
 
-    const W = window.innerWidth  || 1920;
+    const W = window.innerWidth || 1920;
     const H = window.innerHeight || 1080;
     const CW = W * 3;
     const CH = H;
 
     const c = document.createElement('canvas');
-    c.width  = CW;
+    c.width = CW;
     c.height = CH;
     const ctx = c.getContext('2d');
 
     const baseGrad = ctx.createLinearGradient(0, 0, CW, 0);
-    baseGrad.addColorStop(0,    'rgba(255,255,255,0)');
+    baseGrad.addColorStop(0, 'rgba(255,255,255,0)');
     baseGrad.addColorStop(0.12, 'rgba(255,255,255,0.97)');
     baseGrad.addColorStop(0.88, 'rgba(255,255,255,0.97)');
-    baseGrad.addColorStop(1,    'rgba(255,255,255,0)');
+    baseGrad.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = baseGrad;
     ctx.fillRect(0, 0, CW, CH);
 
     const rng = seededRng(42);
     for (let i = 0; i < 140; i++) {
-      const cx   = rng() * CW;
-      const cy   = rng() * CH;
-      const rx   = 60 + rng() * 320;
-      const ry   = 30 + rng() * 180;
+      const cx = rng() * CW;
+      const cy = rng() * CH;
+      const rx = 60 + rng() * 320;
+      const ry = 30 + rng() * 180;
       const dark = 0.04 + rng() * 0.11;
 
       const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
-      g.addColorStop(0,   `rgba(180,190,205,${dark})`);
+      g.addColorStop(0, `rgba(180,190,205,${dark})`);
       g.addColorStop(0.5, `rgba(210,220,230,${dark * 0.5})`);
-      g.addColorStop(1,   'rgba(255,255,255,0)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = g;
       ctx.save();
       ctx.translate(cx, cy);
@@ -209,8 +209,8 @@
     for (let i = 0; i < 60; i++) {
       const cx = rng() * CW;
       const cy = rng() * CH;
-      const r  = 20 + rng() * 100;
-      const g  = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      const r = 20 + rng() * 100;
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
       g.addColorStop(0, `rgba(255,255,255,${0.3 + rng() * 0.3})`);
       g.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = g;
@@ -239,23 +239,23 @@
     el = document.createElement('div');
     el.id = 'gta-cloud-sweep';
 
-    const W = window.innerWidth  || 1920;
+    const W = window.innerWidth || 1920;
     const H = window.innerHeight || 1080;
     const CW = W * 3;
 
     Object.assign(el.style, {
-      position:      'absolute',
-      top:           '0',
-      left:          '0',
-      width:         `${CW}px`,
-      height:        `${H}px`,
-      zIndex:        '480',
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      width: `${CW}px`,
+      height: `${H}px`,
+      zIndex: '480',
       pointerEvents: 'none',
-      willChange:    'transform',
-      transform:     `translateX(${-CW}px)`
+      willChange: 'transform',
+      transform: `translateX(${-CW}px)`
     });
 
-    canvas.style.width  = '100%';
+    canvas.style.width = '100%';
     canvas.style.height = '100%';
     el.appendChild(canvas);
 
@@ -265,17 +265,17 @@
   }
 
   async function cloudTransition(from, to) {
-    const W  = window.innerWidth || 1920;
+    const W = window.innerWidth || 1920;
     const CW = W * 3;
 
     const sweep = mountCloudSweep();
     sweep.style.transition = 'none';
-    sweep.style.transform  = `translateX(${-CW}px)`;
+    sweep.style.transform = `translateX(${-CW}px)`;
     void sweep.offsetWidth;
 
     const coverX = -(CW / 2 - W / 2);
-    const SWEEP_IN_MS  = 420;
-    const HOLD_MS      = 80;
+    const SWEEP_IN_MS = 420;
+    const HOLD_MS = 80;
     const SWEEP_OUT_MS = 380;
 
     const sweepIn = track(sweep.animate([
@@ -283,8 +283,8 @@
       { transform: `translateX(${coverX}px)` }
     ], {
       duration: SWEEP_IN_MS,
-      easing:   'cubic-bezier(0.55, 0, 0.75, 0.05)',
-      fill:     'forwards'
+      easing: 'cubic-bezier(0.55, 0, 0.75, 0.05)',
+      fill: 'forwards'
     }));
 
     await sweepIn.finished;
@@ -306,8 +306,8 @@
       { transform: `translateX(${exitX}px)` }
     ], {
       duration: SWEEP_OUT_MS,
-      easing:   'cubic-bezier(0.25, 0.95, 0.45, 1)',
-      fill:     'forwards'
+      easing: 'cubic-bezier(0.25, 0.95, 0.45, 1)',
+      fill: 'forwards'
     }));
 
     await sweepOut.finished;
@@ -390,7 +390,7 @@
   function dockNow() {
     const cinematic = qs('cinematic');
     const formPanel = qs('form-panel');
-    const pinCard   = qs('pin-card');
+    const pinCard = qs('pin-card');
 
     if (pinCard) {
       pinCard.classList.remove('pin-hidden');
@@ -409,7 +409,7 @@
 
   async function run() {
     if (_running) return;
-    _running  = true;
+    _running = true;
     _canceled = false;
 
     const stageView = qs('satellite-stage-view');
