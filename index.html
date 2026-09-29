@@ -6,28 +6,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Contact — Khwahish</title>
   <meta name="description"
-    content="Get in touch with Khwahish — developer & designer based in Jaipur, India. Let's build something great together.">
+    content="Get in touch with Khwahish, developer based in Jaipur, India. Let's build something great together.">
 
-  <!-- MapLibre GL CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-
-  <!-- Google Fonts: Rajdhani (HUD) + Inter (form) + Newsreader (editorial) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&display=swap"
     rel="stylesheet">
 
-  <link rel="stylesheet" href="style.css?v=15">
+  <link rel="stylesheet" href="style.css?v=306">
 </head>
 
 <body>
 
   <div id="app">
 
-    <!-- ══════════════════════════════════════════════════════
-         LEFT  ·  Form Panel  (hidden → left half after dock)
-    ══════════════════════════════════════════════════════════ -->
     <div id="form-panel" aria-hidden="true">
       <div id="form-inner">
 
@@ -83,98 +76,44 @@
         </form>
 
       </div>
-    </div><!-- /form-panel -->
+    </div>
 
-    <!-- ══════════════════════════════════════════════════════
-         RIGHT  ·  Cinematic Panel  (full-viewport → right half)
-    ══════════════════════════════════════════════════════════ -->
-    <div id="cinematic" role="img" aria-label="Cinematic map transition from your location to Jaipur">
+    <div id="cinematic" role="img" aria-label="Cinematic satellite switch from Los Angeles to Jaipur">
 
-      <!-- Map frame wrapper — counter-translates so the map glides gracefully across to the right pane center -->
-      <div id="map-frame">
-        <!-- Leaflet map — filter applied directly here per feedback -->
-        <div id="map" aria-hidden="true"></div>
+      <div id="satellite-stage-view" aria-hidden="true">
+        <canvas id="surveillance-engine" width="1920" height="1080"></canvas>
       </div>
 
-      <!-- ── Visual overlays (pointer-events: none) ── -->
       <div id="vignette" aria-hidden="true"></div>
+
       <div id="grain" aria-hidden="true"></div>
-      <div id="color-wash" aria-hidden="true"></div>
 
-      <!-- GTA V Volumetric Clouds -->
-      <div id="cloud-container" aria-hidden="true">
-        <div id="cloud-layer-back" class="cloud-layer"></div>
-        <div id="cloud-layer-mid" class="cloud-layer"></div>
-        <div id="cloud-layer-front" class="cloud-layer"></div>
-      </div>
-
-      <!-- Supersonic Speed Streaks (radial motion-blur burst during Pacific traverse) -->
-      <div id="speed-streaks" aria-hidden="true"></div>
-
-      <!-- GTA V Blinding White Photoflash -->
-      <div id="white-flash" aria-hidden="true"></div>
-
-      <!-- Subtle CRT scanline texture -->
       <div id="scanlines" aria-hidden="true"></div>
 
-      <!-- Crosshair reticle (active during flight phases) -->
-      <div id="crosshair" aria-hidden="true">
-        <div class="cr-tl"></div>
-        <div class="cr-tr"></div>
-        <div class="cr-bl"></div>
-        <div class="cr-br"></div>
+      <div id="gta-wash" aria-hidden="true"></div>
+
+      <div id="gta-clouds" aria-hidden="true">
+        <div id="gta-cloud-1" class="gta-cloud"></div>
+        <div id="gta-cloud-2" class="gta-cloud"></div>
+        <div id="gta-cloud-3" class="gta-cloud"></div>
+        <div id="gta-cloud-4" class="gta-cloud"></div>
       </div>
 
-      <!-- Top-edge progress bar -->
-      <div id="scanline-bar" aria-hidden="true" role="progressbar" aria-valuemin="0" aria-valuemax="100"
-        aria-valuenow="0">
-        <div id="scanline-fill"></div>
-      </div>
+      <div id="gta-flash" aria-hidden="true"></div>
 
-      <!-- HUD: location readout (bottom-left) -->
-      <div id="location-hud" aria-hidden="true">
-        <div id="hud-region">—</div>
-        <div id="hud-status">ACQUIRING SIGNAL</div>
-      </div>
-
-
-      <!-- Landing location card (bottom-left) -->
       <div id="pin-card" class="pin-hidden" aria-hidden="true">
         <div class="pin-info">
           <div class="pin-name">Khwahish</div>
-          <div class="pin-location">Jaipur, Raj</div>
+          <div class="pin-location">Jaipur, Rajasthan</div>
         </div>
       </div>
 
-      <!-- ── UI Controls ── -->
-      <button id="skip-btn" type="button">Skip intro</button>
+    </div>
 
-      <button id="sound-toggle" type="button" aria-label="Enable sound" aria-pressed="false">
-        <!-- Muted (default) -->
-        <svg id="icon-muted" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-          <line x1="23" y1="9" x2="17" y2="15" />
-          <line x1="17" y1="9" x2="23" y2="15" />
-        </svg>
-        <!-- Sound on -->
-        <svg id="icon-sound" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-        </svg>
-      </button>
+  </div>
 
-    </div><!-- /cinematic -->
-
-  </div><!-- /app -->
-
-
-
-  <!-- MapLibre GL JS -->
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="script.js?v=15"></script>
+  <script src="engine-satellite.js?v=309"></script>
+  <script src="script.js?v=309"></script>
 
 </body>
 
