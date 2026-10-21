@@ -1,29 +1,38 @@
-/* ================================================================
-   style.css — GTA V Switch · Contact Page
-   Serve via: python3 -m http.server 8080  (don't open as file://)
-   ================================================================ */
-
-/* ── Design Tokens ─────────────────────────────────────────────── */
 :root {
-  /* Restrained monochrome & metallic palette — ZERO yellow/gold */
-  --accent:       #ffffff;
-  --accent-glow:  rgba(255, 255, 255, 0.16);
-  --accent-pale:  rgba(255, 255, 255, 0.08);
-  --hud:  'Rajdhani', sans-serif;
+
+  --accent: #ffffff;
+  --accent-glow: rgba(255, 255, 255, 0.16);
+  --accent-pale: rgba(255, 255, 255, 0.08);
+  --hud: 'Rajdhani', sans-serif;
   --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --serif: 'Newsreader', Georgia, serif;
-  --fg:       rgba(255, 255, 255, 0.94);
-  --fg-dim:   rgba(255, 255, 255, 0.40);
-  --border:   rgba(255, 255, 255, 0.14);
-  --dock-duration: 2200ms;
+  --fg: rgba(255, 255, 255, 0.94);
+  --fg-dim: rgba(255, 255, 255, 0.40);
+  --border: rgba(255, 255, 255, 0.14);
+  --dock-duration: 1600ms;
 }
 
-/* ── Reset ─────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; overflow: hidden; background: #000; color: var(--fg); }
-button { cursor: pointer; font-family: inherit; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-/* ── App Shell ───────────────────────────────────────────────── */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: var(--fg);
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
 #app {
   position: relative;
   width: 100vw;
@@ -31,10 +40,6 @@ button { cursor: pointer; font-family: inherit; }
   overflow: hidden;
 }
 
-/* ────────────────────────────────────────────────────────────────
-   FORM PANEL  (left half — unveiled as map slides to the right)
-   Sits underneath cinematic panel; revealed as map moves right.
-──────────────────────────────────────────────────────────────── */
 #form-panel {
   position: absolute;
   top: 0;
@@ -44,10 +49,20 @@ button { cursor: pointer; font-family: inherit; }
   overflow-x: hidden;
   overflow-y: auto;
   background: #000;
-  z-index: 5;
+  z-index: 500;
+  transform: translateX(-100%);
+  will-change: transform;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 20px 0 60px rgba(0, 0, 0, 0.85);
+  transition: transform var(--dock-duration, 1600ms) cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
 }
 
-/* Inner content — gracefully glides into view after map clears the left pane */
+#form-panel.docked {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
 #form-inner {
   width: 100%;
   min-height: 100%;
@@ -57,10 +72,10 @@ button { cursor: pointer; font-family: inherit; }
   padding: 72px;
   will-change: opacity, transform;
   opacity: 0;
-  transform: translateX(-32px);
+  transform: translateX(-24px);
   transition:
-    opacity calc(var(--dock-duration, 2200ms) * 0.72) cubic-bezier(0.22, 1, 0.36, 1) calc(var(--dock-duration, 2200ms) * 0.18),
-    transform calc(var(--dock-duration, 2200ms) * 0.72) cubic-bezier(0.22, 1, 0.36, 1) calc(var(--dock-duration, 2200ms) * 0.18);
+    opacity calc(var(--dock-duration, 1600ms) * 0.65) cubic-bezier(0.16, 1, 0.3, 1) calc(var(--dock-duration, 1600ms) * 0.2),
+    transform calc(var(--dock-duration, 1600ms) * 0.65) cubic-bezier(0.16, 1, 0.3, 1) calc(var(--dock-duration, 1600ms) * 0.2);
 }
 
 #form-panel.docked #form-inner {
@@ -68,7 +83,6 @@ button { cursor: pointer; font-family: inherit; }
   transform: translateX(0);
 }
 
-/* ── Form Header ───────────────────────────────────────────────── */
 #form-header {
   margin-bottom: 48px;
 }
@@ -84,7 +98,6 @@ button { cursor: pointer; font-family: inherit; }
   text-transform: lowercase;
 }
 
-/* ── Form Fields (Single Minimalist Horizontal Line Boundary) ───── */
 #contact-form {
   display: flex;
   flex-direction: column;
@@ -142,7 +155,6 @@ button { cursor: pointer; font-family: inherit; }
   color: rgba(255, 255, 255, 0.18);
 }
 
-/* Base horizontal line — the sole boundary */
 .field-line {
   position: absolute;
   bottom: 0;
@@ -154,7 +166,6 @@ button { cursor: pointer; font-family: inherit; }
   transition: background-color 280ms ease;
 }
 
-/* Subtle focus line transition: pure off-white line scaling smoothly along the boundary */
 .field-line::after {
   content: '';
   position: absolute;
@@ -173,12 +184,11 @@ button { cursor: pointer; font-family: inherit; }
   transform: scaleX(1);
 }
 
-/* Subtle invalid state: line turns restrained muted crimson */
-.field-line-wrap input.invalid ~ .field-line {
+.field-line-wrap input.invalid~.field-line {
   background-color: rgba(239, 68, 68, 0.6);
 }
 
-.field-line-wrap input.invalid ~ .field-line::after {
+.field-line-wrap input.invalid~.field-line::after {
   transform: scaleX(1);
   background: rgba(239, 68, 68, 0.9);
   box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
@@ -189,12 +199,21 @@ button { cursor: pointer; font-family: inherit; }
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25%       { transform: translateX(-4px); }
-  75%       { transform: translateX(4px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-4px);
+  }
+
+  75% {
+    transform: translateX(4px);
+  }
 }
 
-/* ── Budget Row ────────────────────────────────────────────────── */
 .budget-row {
   display: flex;
   align-items: flex-end;
@@ -244,7 +263,6 @@ button { cursor: pointer; font-family: inherit; }
   color: rgba(255, 255, 255, 0.92);
 }
 
-/* Subtle and elegant outlined selected state — never a filled button */
 .pill.selected {
   background: rgba(255, 255, 255, 0.08);
   border-color: #ffffff;
@@ -253,7 +271,6 @@ button { cursor: pointer; font-family: inherit; }
   box-shadow: 0 0 16px rgba(255, 255, 255, 0.06);
 }
 
-/* ── Send Button (Minimal Monochrome Pill) ──────────────────────── */
 #send-btn {
   flex-shrink: 0;
   display: inline-flex;
@@ -269,7 +286,7 @@ button { cursor: pointer; font-family: inherit; }
   border: 1px solid rgba(255, 255, 255, 0.32);
   border-radius: 999px;
   padding: 11px 24px;
-  transition: 
+  transition:
     background-color 260ms cubic-bezier(0.16, 1, 0.3, 1),
     border-color 260ms cubic-bezier(0.16, 1, 0.3, 1),
     color 260ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -307,12 +324,6 @@ button { cursor: pointer; font-family: inherit; }
   cursor: default;
 }
 
-/* ────────────────────────────────────────────────────────────────
-   CINEMATIC PANEL  (full-viewport during intro, slides right to dock)
-   GPU-composited transform: translateX(0) → translateX(50vw).
-   The map itself gracefully and smoothly slides to the right half,
-   unveiling the contact form on the left.
-──────────────────────────────────────────────────────────────── */
 #cinematic {
   position: absolute;
   top: 0;
@@ -322,42 +333,44 @@ button { cursor: pointer; font-family: inherit; }
   overflow: hidden;
   z-index: 10;
   background-color: #0c151b;
-  will-change: transform, box-shadow;
-  transform: translateX(0);
-  transition:
-    transform var(--dock-duration, 2200ms) cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow var(--dock-duration, 2200ms) cubic-bezier(0.22, 1, 0.36, 1);
-  perspective: 750px;
-  perspective-origin: 50% 50%;
-  border-left: 1px solid transparent;
+  transform: none;
 }
 
-/* At dock: the cinematic map panel gracefully and smoothly slides to the right half */
 #cinematic.docked {
-  transform: translateX(50vw);
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: -16px 0 45px rgba(0, 0, 0, 0.85);
+  transform: none;
+  border-left: none;
+  box-shadow: none;
 }
 
-/* ── Map Frame Wrapper ───────────────────────────────────────────
-   Smoothly counter-translates by -25vw during the dock transition.
-   Together with #cinematic's +50vw slide, this moves the map +25vw
-   on the user's screen — gracefully sliding Jaipur from 50vw (fullscreen center)
-   to 75vw (center of the right pane) with 100% GPU-composited smoothness.
-──────────────────────────────────────────────────────────────── */
-#map-frame {
+#map-frame,
+#cinematic.docked #map-frame {
+  display: none;
+}
+
+#video-intro-layer {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #0c151b;
-  transform: translateX(0);
-  will-change: transform;
-  transition: transform var(--dock-duration, 2200ms) cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 950;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease;
 }
 
-#cinematic.docked #map-frame {
-  transform: translateX(-25vw);
+#video-intro-layer.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#video-intro-layer.hidden {
+  display: none;
+}
+
+#video-intro {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
 }
 
 @property --cam-pitch {
@@ -378,7 +391,6 @@ button { cursor: pointer; font-family: inherit; }
   initial-value: 0px;
 }
 
-/* ── Map Canvas (Flat Overhead View) ────────────────────────────── */
 #map {
   position: absolute;
   inset: 0;
@@ -389,7 +401,6 @@ button { cursor: pointer; font-family: inherit; }
   will-change: filter, transform;
 }
 
-/* Hide MapLibre default chrome */
 .maplibregl-ctrl-attrib,
 .maplibregl-ctrl-bottom-right,
 .maplibregl-ctrl-bottom-left,
@@ -398,14 +409,12 @@ button { cursor: pointer; font-family: inherit; }
   display: none !important;
 }
 
-/* Custom MapLibre Jaipur Radar Target Marker (Removed beating crosshair / marker) */
 .jaipur-marker-element,
 .jaipur-marker-element .marker-ring,
 .jaipur-marker-element .marker-dot {
   display: none !important;
 }
 
-/* ── Continuous Directional Motion Blur During Active Zoom Travel ── */
 #map.camera-motion-blur {
   will-change: transform, filter;
   transition: filter 35ms linear, transform 35ms linear;
@@ -421,39 +430,159 @@ button { cursor: pointer; font-family: inherit; }
   filter: var(--grade-filter, none) blur(6px) contrast(1.20) brightness(1.04) !important;
 }
 
-/* ── Landing Touchdown Impact (View 7 Final Street Level) ── */
 #map.camera-recoil,
-#map.camera-recoil-landing {
-  animation: gta-landing-impact 360ms cubic-bezier(0.15, 0.85, 0.35, 1);
+#map.camera-recoil-landing,
+#three-canvas.camera-recoil,
+#three-canvas.camera-recoil-landing {
+  animation: none !important;
+}
+
+#three-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #0c151b;
+  display: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: filter 350ms ease, opacity 100ms ease;
+  will-change: filter, transform, opacity;
+  z-index: 2;
+}
+
+#three-canvas.active {
+  display: block;
+  opacity: 1;
+}
+
+#offline-landing {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+  z-index: 3;
+}
+
+#offline-landing.active {
+  display: block;
+}
+
+#satellite-stage-view {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 3;
+  background: #000;
+  pointer-events: none;
+
+  display: block;
+  transform: translateX(0);
+  will-change: transform;
+  transition: transform var(--dock-duration, 1600ms) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#cinematic.docked #satellite-stage-view {
+  transform: translateX(25vw);
+}
+
+#surveillance-engine,
+#surveillance-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  transform: scale(1.04) translate(0px, 0px);
+  transform-origin: 50% 50%;
+  will-change: transform, filter;
+  image-rendering: high-quality;
+  z-index: 1;
+}
+
+#surveillance-engine.drone-hover,
+#surveillance-canvas.drone-hover {
+  animation: gta-drone-orbit 34s cubic-bezier(0.44, 0.05, 0.55, 0.95) infinite;
+}
+
+@keyframes gta-drone-orbit {
+  0% {
+    transform: scale(1.04) translate(0px, 0px) rotate(0deg);
+  }
+  12.5% {
+    transform: scale(1.07) translate(24px, 10px) rotate(0.20deg);
+  }
+  25% {
+    transform: scale(1.09) translate(34px, 0px) rotate(0.35deg);
+  }
+  37.5% {
+    transform: scale(1.11) translate(20px, -12px) rotate(0.18deg);
+  }
+  50% {
+    transform: scale(1.12) translate(0px, -18px) rotate(-0.10deg);
+  }
+  62.5% {
+    transform: scale(1.10) translate(-24px, -10px) rotate(-0.35deg);
+  }
+  75% {
+    transform: scale(1.07) translate(-34px, 0px) rotate(-0.20deg);
+  }
+  87.5% {
+    transform: scale(1.05) translate(-18px, 10px) rotate(0.10deg);
+  }
+  100% {
+    transform: scale(1.04) translate(0px, 0px) rotate(0deg);
+  }
 }
 
 @keyframes gta-landing-impact {
-  0%   { transform: scale(1.06) translateY(-24px); }
-  28%  { transform: scale(0.96) translateY(18px); }
-  55%  { transform: scale(1.02) translateY(-6px); }
-  78%  { transform: scale(0.995) translateY(2px); }
-  100% { transform: scale(1) translateY(0); }
+  0% {
+    transform: scale(1.06) translateY(-24px);
+  }
+
+  28% {
+    transform: scale(0.96) translateY(18px);
+  }
+
+  55% {
+    transform: scale(1.02) translateY(-6px);
+  }
+
+  78% {
+    transform: scale(0.995) translateY(2px);
+  }
+
+  100% {
+    transform: scale(1) translateY(0);
+  }
 }
 
-/* ── Overlay Stack (pointer-events: none for all) ──────────────── */
-#vignette, #grain, #color-wash, #scanlines {
+#vignette,
+#grain,
+#color-wash,
+#scanlines {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
-/* Vignette — dark radial gradient frame, authentic GTA surveillance look */
 #vignette {
   z-index: 400;
-  background: radial-gradient(
-    ellipse at center,
-    transparent 45%,
-    rgba(0, 0, 0, 0.40) 80%,
-    rgba(0, 0, 0, 0.75) 100%
-  );
+  background: radial-gradient(ellipse at center,
+      transparent 45%,
+      rgba(0, 0, 0, 0.40) 80%,
+      rgba(0, 0, 0, 0.75) 100%);
 }
 
-/* Film grain texture */
 #grain {
   z-index: 401;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
@@ -463,113 +592,103 @@ button { cursor: pointer; font-family: inherit; }
   transition: opacity 400ms ease;
 }
 
-/* Color wash — dynamic per phase */
-#color-wash {
-  z-index: 402;
-  background: rgba(110, 175, 42, 0.50);
-  mix-blend-mode: color;
-  transition: background 350ms ease;
-}
-
-/* ── GTA V Volumetric Clouds (Hidden Cut Beat) ─────── */
-#cloud-container {
+#gta-wash {
   position: absolute;
   inset: 0;
+  z-index: 402;
   pointer-events: none;
-  z-index: 415;
-  overflow: hidden;
-  opacity: 0;
-  transition: opacity 200ms ease;
+  background-color: transparent;
+  mix-blend-mode: color;
+  transition: background-color 350ms ease;
 }
 
-.cloud-layer {
+#gta-clouds {
   position: absolute;
-  inset: -60%;
+  inset: 0;
+  z-index: 415;
   pointer-events: none;
+  overflow: hidden;
+}
+
+.gta-cloud {
+  position: absolute;
+
+  inset: -20%;
+  pointer-events: none;
+  opacity: 0;
   will-change: transform, opacity;
 }
 
-#cloud-layer-back {
+#gta-cloud-1 {
   background:
-    radial-gradient(ellipse 60% 45% at 20% 30%, rgba(255, 255, 255, 0.92) 0%, rgba(210, 230, 255, 0.55) 45%, transparent 75%),
-    radial-gradient(ellipse 70% 55% at 75% 65%, rgba(255, 255, 255, 0.94) 0%, rgba(200, 225, 255, 0.50) 50%, transparent 75%),
-    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(255, 255, 255, 0.88) 0%, rgba(195, 220, 255, 0.45) 55%, transparent 80%),
-    radial-gradient(circle at 85% 20%, rgba(255, 255, 255, 0.90) 0%, transparent 50%);
-  filter: blur(28px);
-  opacity: 0.90;
+    radial-gradient(ellipse 60% 50% at 30% 35%,
+      rgba(255,255,255,0.96) 0%,
+      rgba(220,235,255,0.65) 40%,
+      transparent 70%),
+    radial-gradient(ellipse 45% 40% at 70% 55%,
+      rgba(255,255,255,0.90) 0%,
+      transparent 65%);
+  filter: blur(32px);
 }
 
-#cloud-layer-mid {
+#gta-cloud-2 {
   background:
-    radial-gradient(ellipse 65% 55% at 35% 45%, rgba(255, 255, 255, 0.98) 0%, rgba(225, 240, 255, 0.60) 45%, transparent 70%),
-    radial-gradient(ellipse 55% 45% at 70% 25%, rgba(255, 255, 255, 0.94) 0%, rgba(215, 235, 255, 0.55) 50%, transparent 75%),
-    radial-gradient(ellipse 50% 50% at 15% 75%, rgba(255, 255, 255, 0.96) 0%, rgba(210, 230, 255, 0.50) 45%, transparent 70%);
-  filter: blur(40px);
-  opacity: 0.94;
+    radial-gradient(ellipse 70% 60% at 55% 45%,
+      rgba(255,255,255,0.94) 0%,
+      rgba(215,238,255,0.60) 45%,
+      transparent 72%);
+  filter: blur(44px);
 }
 
-#cloud-layer-front {
+#gta-cloud-3 {
   background:
-    radial-gradient(circle at 40% 60%, rgba(255, 255, 255, 0.90) 0%, rgba(240, 248, 255, 0.45) 40%, transparent 70%),
-    radial-gradient(circle at 80% 40%, rgba(255, 255, 255, 0.92) 0%, rgba(230, 245, 255, 0.45) 45%, transparent 70%);
+    radial-gradient(ellipse 55% 45% at 25% 65%,
+      rgba(255,255,255,0.92) 0%,
+      transparent 68%),
+    radial-gradient(circle at 78% 28%,
+      rgba(255,255,255,0.88) 0%,
+      transparent 55%);
+  filter: blur(38px);
+}
+
+#gta-cloud-4 {
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 50%,
+      rgba(255,255,255,0.82) 0%,
+      rgba(230,245,255,0.50) 50%,
+      transparent 78%);
   filter: blur(56px);
-  opacity: 0.90;
 }
 
-/* Full cloud cover during the hidden cut beat */
-#cloud-container.clouds-cover {
-  opacity: 1 !important;
-  transition: opacity 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-/* Cloud sweep out revealing India */
-#cloud-container.clouds-sweep-out {
-  opacity: 0 !important;
-  transition: opacity 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-/* ── GTA V Quick Photoflash Burst (~120ms, peak opacity ~0.85) ──── */
-#white-flash {
+#gta-flash {
   position: absolute;
   inset: 0;
-  background: #ffffff;
   z-index: 480;
   pointer-events: none;
+  background: #ffffff;
   opacity: 0;
+  will-change: opacity;
 }
 
-#white-flash.flash-burst {
-  animation: gta-flash-burst 120ms cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
-}
-
-@keyframes gta-flash-burst {
-  0%   { opacity: 0.85; }
-  100% { opacity: 0; }
-}
-
-/* Subtle CRT scanlines — always-on low-opacity texture */
 #scanlines {
   z-index: 404;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0)    0px,
-    rgba(0, 0, 0, 0)    2px,
-    rgba(0, 0, 0, 0.055) 2px,
-    rgba(0, 0, 0, 0.055) 3px
-  );
+  background: repeating-linear-gradient(0deg,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0.055) 2px,
+      rgba(0, 0, 0, 0.055) 3px);
 }
 
-/* ── Crosshair Reticle (Removed) ────────────────────────────────── */
-#crosshair {
+#crosshair,
+#skip-btn,
+#scanline-bar,
+#scanline-fill,
+#speed-streaks,
+#location-hud,
+#hud-region,
+#hud-status {
   display: none !important;
 }
-
-/* ── Skip Button — removed from UI ────────────────────────────────── */
-#skip-btn,
-#sound-toggle,
-#location-hud,
-#scanline-bar,
-#scanline-fill { display: none !important; }
 
 #hud-region {
   font-family: var(--hud);
@@ -580,8 +699,8 @@ button { cursor: pointer; font-family: inherit; }
   color: #fff;
   line-height: 1;
   text-shadow:
-    0  1px 10px rgba(0, 0, 0, 0.9),
-    0  0   3px  rgba(0, 0, 0, 0.6);
+    0 1px 10px rgba(0, 0, 0, 0.9),
+    0 0 3px rgba(0, 0, 0, 0.6);
 }
 
 #hud-status {
@@ -595,8 +714,6 @@ button { cursor: pointer; font-family: inherit; }
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
 }
 
-
-/* ── Leaflet State White Highlight Boundary ─────────────────────── */
 .state-highlight-shape {
   stroke: #ffffff !important;
   stroke-width: 2.5px !important;
@@ -612,17 +729,17 @@ button { cursor: pointer; font-family: inherit; }
     stroke-opacity: 0.7;
     fill-opacity: 0.16;
   }
+
   100% {
     stroke-opacity: 1.0;
     fill-opacity: 0.26;
   }
 }
 
-/* ── Landing Location Card ─────────────────────────────────────── */
 #pin-card {
   position: absolute;
   bottom: 78px;
-  left: 36px;
+  left: calc(50vw + 36px);
   z-index: 460;
   display: flex;
   flex-direction: column;
@@ -630,93 +747,105 @@ button { cursor: pointer; font-family: inherit; }
   transform: translateY(8px);
   will-change: transform, opacity;
   transition:
-    opacity   500ms ease,
+    opacity 500ms ease,
     transform 1050ms cubic-bezier(0.25, 1, 0.35, 1);
 }
 
-#pin-card.pin-hidden  { display: none; }
-#pin-card.pin-visible { opacity: 1; transform: none; }
+#pin-card.pin-hidden {
+  display: none;
+}
+
+#pin-card.pin-visible {
+  opacity: 1;
+  transform: none;
+}
 
 .pin-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .pin-name {
   font-family: var(--hud);
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #fff;
+  color: #ffffff;
   line-height: 1;
   text-shadow:
+    0 1px 2px #000000,
     0 2px 14px rgba(0, 0, 0, 0.95),
-    0 0 5px rgba(0, 0, 0, 0.8);
+    0 0 6px rgba(0, 0, 0, 0.9);
 }
 
 .pin-location {
   font-family: var(--hud);
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.52);
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.95);
+  color: #ffffff;
+  line-height: 1.2;
+  text-shadow:
+    0 1px 2px #000000,
+    0 1px 4px rgba(0, 0, 0, 1),
+    0 2px 10px rgba(0, 0, 0, 0.95),
+    0 0 14px rgba(0, 0, 0, 0.9);
 }
 
-
-
-/* ── Instant-state helper (disables transitions for already-played) */
-.no-anim, .no-anim * {
+.no-anim,
+.no-anim * {
   animation: none !important;
   transition-duration: 0ms !important;
   transition-delay: 0ms !important;
 }
 
-/* ── Idle Camera Breathing ─────────────────────────────────────────
-   Subtle alive-feeling drift so static holds never look frozen.
-   Applied/removed by addBreathing() / removeBreathing() in script.
-──────────────────────────────────────────────────────────────────── */
-#map.breathing {
-  animation: camera-breathe 4.5s ease-in-out infinite;
+#map.breathing,
+#three-canvas.breathing {
+  animation: camera-breathe 8s ease-in-out infinite;
 }
 
 @keyframes camera-breathe {
-  0%   { transform: scale(1) translate(0px, 0px); }
-  25%  { transform: scale(1.006) translate(3px, 2px); }
-  50%  { transform: scale(1.010) translate(-2px, 4px); }
-  75%  { transform: scale(1.005) translate(2px, -2px); }
-  100% { transform: scale(1) translate(0px, 0px); }
+  0% {
+    transform: scale(1) translate(0px, 0px);
+  }
+
+  25% {
+    transform: scale(1.002) translate(1px, 1px);
+  }
+
+  50% {
+    transform: scale(1.004) translate(-1px, 2px);
+  }
+
+  75% {
+    transform: scale(1.002) translate(1px, -1px);
+  }
+
+  100% {
+    transform: scale(1) translate(0px, 0px);
+  }
 }
 
-/* ── State Layer Fade-Out ──────────────────────────────────────────
-   Applied to the SVG path of the state highlight before removal.
-──────────────────────────────────────────────────────────────────── */
 .fading-out {
   opacity: 0 !important;
   transition: opacity 260ms ease-out !important;
 }
 
-/* ── Speed Streaks (Radial Motion Blur) ────────────────────────────
-   Fires during the atmospheric transition / supersonic Pacific
-   traverse. A radial zoom-burst that sells the sudden velocity.
-──────────────────────────────────────────────────────────────────── */
 #speed-streaks {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 416;
   opacity: 0;
-  background: radial-gradient(
-    ellipse 80% 80% at 50% 50%,
-    transparent 30%,
-    rgba(255, 255, 255, 0.08) 55%,
-    rgba(255, 255, 255, 0.22) 75%,
-    rgba(255, 255, 255, 0.04) 90%,
-    transparent 100%
-  );
+  background: radial-gradient(ellipse 80% 80% at 50% 50%,
+      transparent 30%,
+      rgba(255, 255, 255, 0.08) 55%,
+      rgba(255, 255, 255, 0.22) 75%,
+      rgba(255, 255, 255, 0.04) 90%,
+      transparent 100%);
   mix-blend-mode: screen;
   transform: scale(0.85);
 }
@@ -726,19 +855,29 @@ button { cursor: pointer; font-family: inherit; }
 }
 
 @keyframes speed-streak-burst {
-  0%   { opacity: 0;    transform: scale(0.85); }
-  8%   { opacity: 0.9;  transform: scale(1.0);  }
-  30%  { opacity: 0.65; transform: scale(1.12); }
-  100% { opacity: 0;    transform: scale(1.55); }
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+
+  8% {
+    opacity: 0.9;
+    transform: scale(1.0);
+  }
+
+  30% {
+    opacity: 0.65;
+    transform: scale(1.12);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.55);
+  }
 }
 
-/* ────────────────────────────────────────────────────────────────
-   MOBILE  (≤ 768px)
-   Cinematic banner on top (35vh) · form slides up from below
-──────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
 
-  /* Cinematic shrinks to top banner on mobile */
   #cinematic {
     width: 100vw !important;
     left: 0;
@@ -755,12 +894,12 @@ button { cursor: pointer; font-family: inherit; }
     clip-path: inset(0 0 calc(100vh - 35vh) 0) !important;
   }
 
+  #cinematic.docked #satellite-stage-view,
   #map-frame,
   #cinematic.docked #map-frame {
     transform: none !important;
   }
 
-  /* Form panel on mobile */
   #form-panel {
     top: 35vh;
     left: 0;
@@ -769,7 +908,8 @@ button { cursor: pointer; font-family: inherit; }
     transform: translateY(100%) !important;
     border-right: none;
     border-top: 1px solid rgba(255, 255, 255, 0.16);
-    transition: transform var(--dock-duration, 2200ms) cubic-bezier(0.25, 1, 0.35, 1) !important;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.9);
+    transition: transform var(--dock-duration, 1600ms) cubic-bezier(0.25, 1, 0.35, 1) !important;
   }
 
   #form-panel.docked {
@@ -791,18 +931,25 @@ button { cursor: pointer; font-family: inherit; }
     height: auto;
     padding: 40px 28px 52px;
     justify-content: flex-start;
-    transform: translateX(0); /* no horizontal slide on mobile */
+    transform: translateX(0);
+
   }
 
   #form-panel.docked #form-inner {
     transform: none;
   }
 
-  #form-header { margin-bottom: 36px; }
+  #form-header {
+    margin-bottom: 36px;
+  }
 
-  #form-inner h1 { font-size: 30px; }
+  #form-inner h1 {
+    font-size: 30px;
+  }
 
-  #contact-form { gap: 34px; }
+  #contact-form {
+    gap: 34px;
+  }
 
   .budget-row {
     flex-direction: column;
@@ -810,13 +957,26 @@ button { cursor: pointer; font-family: inherit; }
     gap: 20px;
   }
 
-  #send-btn { align-self: flex-end; }
+  #send-btn {
+    align-self: flex-end;
+  }
 
-  /* HUD / pin card repositioned for compact cinematic */
-  #location-hud { bottom: 14px; left: 16px; }
-  #pin-card     { bottom: 54px; left: 16px; }
-  #skip-btn     { top: 12px;    right: 52px; }
-  #sound-toggle { top: 12px;    right: 12px; }
+  #location-hud {
+    bottom: 14px;
+    left: 16px;
+  }
 
-  #pin-card.pin-hidden { display: none; }
+  #pin-card {
+    bottom: 54px;
+    left: 16px;
+  }
+
+  #skip-btn {
+    top: 12px;
+    right: 52px;
+  }
+
+  #pin-card.pin-hidden {
+    display: none;
+  }
 }

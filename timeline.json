@@ -1,22 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "name": "GTA V Character Switch - 7-View Sequence Timeline",
-  "version": "1.0",
-  "description": "Configuration managing sequence timeline, camera zoom/altitude distance, hold durations, highlights, and transitions.",
-  "settleMs": 600,
-  "dockTransitionMs": 2200,
+  "name": "GTA V Character Switch - Corrected 2D Mechanic + Scoped 3D Bookends",
+  "version": "2.0",
+  "description": "Fixed-center 2D mechanic with scoped Three.js street-level bookends, disguised symmetrical pan, and instant cuts.",
+  "settleMs": 0,
+  "dockTransitionMs": 1600,
   "locations": {
     "jaipur": [
       75.7873,
       26.9124
-    ],
-    "rajasthan": [
-      73.85,
-      26.6
-    ],
-    "india": [
-      78.9629,
-      22.5937
     ],
     "fallback_visitor": [
       -118.2437,
@@ -29,27 +21,30 @@
       "index": 1,
       "name": "Street (visitor)",
       "target": "visitor",
-      "zoom": 15,
+      "zoom": 15.0,
       "approxAltitudeKm": 1.2,
       "holdMs": 3000,
+      "motionMs": 0,
       "colorGrade": "GROUND",
       "shutterSound": false,
       "cameraPop": false,
       "breathing": true,
       "crosshair": false,
+      "use3D": false,
       "highlight": {
         "enabled": false
       },
       "transitionMs": 0
     },
     {
-      "id": "view_2_area",
+      "id": "view_2_out1",
       "index": 2,
-      "name": "Area (visitor)",
+      "name": "Out 1 (visitor)",
       "target": "visitor",
-      "zoom": 11,
+      "zoom": 11.0,
       "approxAltitudeKm": 18,
-      "holdMs": 1200,
+      "holdMs": 420,
+      "motionMs": 900,
       "colorGrade": "OUT_1",
       "shutterSound": true,
       "shutterFirst": true,
@@ -58,18 +53,39 @@
       "highlight": {
         "enabled": false
       },
-      "transitionMs": 180
+      "transitionMs": 140
     },
     {
-      "id": "view_3_state",
+      "id": "view_3_out2",
       "index": 3,
-      "name": "State — California",
+      "name": "Out 2 (visitor)",
+      "target": "visitor",
+      "zoom": 8.0,
+      "approxAltitudeKm": 120,
+      "holdMs": 420,
+      "motionMs": 1150,
+      "colorGrade": "OUT_1",
+      "shutterSound": true,
+      "shutterFirst": false,
+      "cameraPop": true,
+      "flash": true,
+      "highlight": {
+        "enabled": false
+      },
+      "transitionMs": 140
+    },
+    {
+      "id": "view_4_out3",
+      "index": 4,
+      "name": "Out 3 (max out — visitor)",
       "target": "visitor",
       "zoom": 6.5,
       "approxAltitudeKm": 350,
-      "holdMs": 3000,
+      "holdMs": 700,
+      "motionMs": 1450,
       "colorGrade": "OUT_2",
       "shutterSound": true,
+      "shutterFirst": false,
       "cameraPop": true,
       "flash": true,
       "highlight": {
@@ -80,47 +96,34 @@
         "radiusKm": 280,
         "fadeOutMs": 260
       },
-      "transitionMs": 200
+      "transitionMs": 160
     },
     {
-      "id": "hidden_cut",
+      "id": "disguised_pan_cut",
       "index": null,
-      "type": "hidden_cut",
-      "name": "Continent Jump",
-      "cloudSweepInMs": 200,
-      "flashPopMs": 120,
-      "cloudHoldMs": 200,
-      "cloudSweepOutMs": 250,
-      "destinationTarget": "india",
-      "destinationZoom": 5,
+      "type": "disguised_pan_cut",
+      "name": "Disguised Pan & Pacific Jump",
+      "panOffsetDeg": [0.15, -0.04],
+      "panDurationMs": 700,
+      "cloudSweepInMs": 260,
+      "flashPopMs": 160,
+      "cloudHoldMs": 500,
+      "cloudSweepOutMs": 320,
+      "travelMs": 1800,
+      "destinationTarget": "jaipur",
+      "destinationZoom": 6.5,
       "colorGrade": "IN_1",
       "transitionMs": 0
     },
     {
-      "id": "view_4_india",
-      "index": 4,
-      "name": "India",
-      "target": "india",
-      "zoom": 5,
-      "approxAltitudeKm": 1100,
-      "holdMs": 3000,
-      "colorGrade": "IN_1",
-      "shutterSound": false,
-      "cameraPop": false,
-      "flash": false,
-      "highlight": {
-        "enabled": false
-      },
-      "transitionMs": 0
-    },
-    {
-      "id": "view_5_rajasthan",
+      "id": "view_5_in1",
       "index": 5,
-      "name": "Rajasthan",
-      "target": "rajasthan",
-      "zoom": 6.5,
-      "approxAltitudeKm": 350,
-      "holdMs": 3000,
+      "name": "In 1 (Jaipur)",
+      "target": "jaipur",
+      "zoom": 10.0,
+      "approxAltitudeKm": 30,
+      "holdMs": 420,
+      "motionMs": 1000,
       "colorGrade": "IN_2",
       "shutterSound": true,
       "shutterFirst": false,
@@ -129,50 +132,59 @@
       "highlight": {
         "enabled": false
       },
-      "transitionMs": 200
+      "transitionMs": 140
     },
     {
-      "id": "view_6_jaipur",
+      "id": "view_6_in2",
       "index": 6,
-      "name": "Jaipur",
+      "name": "In 2 (Jaipur)",
       "target": "jaipur",
-      "zoom": 10.5,
-      "approxAltitudeKm": 25,
-      "holdMs": 3000,
+      "zoom": 13.0,
+      "approxAltitudeKm": 5,
+      "holdMs": 420,
+      "motionMs": 1250,
       "colorGrade": "IN_3",
       "shutterSound": true,
       "shutterFirst": false,
       "cameraPop": true,
       "flash": true,
       "highlight": {
-        "enabled": false,
-        "type": "fixed",
-        "name": "Jaipur",
-        "country": "India",
-        "radiusKm": 28,
-        "fadeOutMs": 260
+        "enabled": false
       },
-      "transitionMs": 220
+      "transitionMs": 150
     },
     {
       "id": "view_7_final",
       "index": 7,
-      "name": "Final — inside Jaipur (street)",
+      "name": "Final — Landing (Jaipur)",
       "target": "jaipur",
-      "zoom": 15,
+      "zoom": 15.0,
       "approxAltitudeKm": 1.2,
-      "holdMs": 1200,
+      "holdMs": 900,
+      "motionMs": 1450,
       "colorGrade": "LANDING",
       "isLanding": true,
       "landingSound": true,
       "landingImpact": true,
+      "use3D": false,
       "marker": false,
       "crosshairLock": false,
       "flash": true,
       "highlight": {
         "enabled": false
       },
-      "transitionMs": 240
+      "transitionMs": 180
     }
+  ],
+  "captureStages": [
+    { "id": "view_1_street", "sourceView": "view_1_street", "durationMs": 1400, "motion": "hold" },
+    { "id": "view_2_out1", "sourceView": "view_2_out1", "durationMs": 1320, "motion": "zoom-out" },
+    { "id": "view_3_out2", "sourceView": "view_3_out2", "durationMs": 1570, "motion": "zoom-out" },
+    { "id": "view_4_out3", "sourceView": "view_4_out3", "durationMs": 1950, "motion": "zoom-out" },
+    { "id": "high_altitude", "center": [-21.2, 42.0], "zoom": 2.1, "colorGrade": "OUT_2", "durationMs": 900, "motion": "travel" },
+    { "id": "geographic_traversal", "center": [35.0, 35.0], "zoom": 2.4, "colorGrade": "IN_1", "durationMs": 1100, "motion": "travel" },
+    { "id": "view_5_in1", "sourceView": "view_5_in1", "durationMs": 1420, "motion": "zoom-in" },
+    { "id": "view_6_in2", "sourceView": "view_6_in2", "durationMs": 1670, "motion": "zoom-in" },
+    { "id": "view_7_final", "sourceView": "view_7_final", "durationMs": 2350, "motion": "zoom-in" }
   ]
 }
